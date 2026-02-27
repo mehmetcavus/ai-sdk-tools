@@ -1,0 +1,82 @@
+{
+  "name": "@ai-sdk-tools/devtools",
+  "version": "2.0.0-beta.0",
+  "description": "AI development tools for debugging and monitoring AI SDKs streams",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "bun run build",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "devtools",
+    "debugging",
+    "chat",
+    "streaming",
+    "development",
+    "ai-sdk",
+    "react"
+  ],
+  "author": "Pontus Abrahamsson",
+  "license": "MIT",
+  "peerDependencies": {
+    "@ai-sdk/react": ">=2.0.0",
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0",
+    "@ai-sdk-tools/store": "*"
+  },
+  "peerDependenciesMeta": {
+    "@ai-sdk-tools/store": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "@ai-sdk/react": "^3.0.3",
+    "@ai-sdk-tools/store": "workspace:*"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.6",
+    "@mui/material": "^7.3.6",
+    "@types/dagre": "^0.7.53",
+    "@xyflow/react": "^12.10.0",
+    "ai": "^6.0.3",
+    "dagre": "^0.8.5",
+    "react-json-view-lite": "^2.5.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/midday-ai/ai-sdk-tools.git"
+  },
+  "bugs": {
+    "url": "https://github.com/midday-ai/ai-sdk-tools/issues"
+  },
+  "homepage": "https://github.com/midday-ai/ai-sdk-tools#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}
