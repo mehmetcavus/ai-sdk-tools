@@ -190,7 +190,7 @@ const memory = new DrizzleProvider(db, {
             </div>
             <p className="text-xs text-secondary mb-12">
               <a
-                href="https://github.com/mehmetcavus/ai-sdk-tools/blob/main/packages/memory/DRIZZLE.md"
+                href="https://github.com/midday-ai/ai-sdk-tools/blob/main/packages/memory/DRIZZLE.md"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-[#d4d4d4] underline"
@@ -593,7 +593,7 @@ function ChatComponent() {
               ← Agents
             </Link>
             <Link
-              href="https://github.com/mehmetcavus/ai-sdk-tools/tree/main/packages/memory"
+              href="https://github.com/midday-ai/ai-sdk-tools/tree/main/packages/memory"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-secondary hover:text-[#d4d4d4] transition-colors"

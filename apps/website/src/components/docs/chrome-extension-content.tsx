@@ -122,7 +122,7 @@ export default function ChromeExtensionContent() {
                   className="text-xs font-mono leading-relaxed"
                   dangerouslySetInnerHTML={{
                     __html: highlight(`# Clone the repository
-git clone https://github.com/mehmetcavus/ai-sdk-tools.git
+git clone https://github.com/midday-ai/ai-sdk-tools.git
 
 # Navigate to chrome-extension directory
 cd ai-sdk-tools/packages/chrome-extension
@@ -325,7 +325,7 @@ window.AISDKTools = {
             </Link>
 
             <a
-              href="https://github.com/mehmetcavus/ai-sdk-tools"
+              href="https://github.com/midday-ai/ai-sdk-tools"
               target="_blank"
               rel="noopener noreferrer"
               className="group border border-[#2a2a2a] hover:border-[#404040] transition-colors p-8"

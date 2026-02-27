@@ -28,13 +28,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mehmetcavus/ai-sdk-tools.git",
+    "url": "https://github.com/midday-ai/ai-sdk-tools.git",
     "directory": "packages/ai-sdk-tools"
   },
   "bugs": {
-    "url": "https://github.com/mehmetcavus/ai-sdk-tools/issues"
+    "url": "https://github.com/midday-ai/ai-sdk-tools/issues"
   },
-  "homepage": "https://github.com/mehmetcavus/ai-sdk-tools#readme",
+  "homepage": "https://github.com/midday-ai/ai-sdk-tools#readme",
   "type": "module",
   "exports": {
     ".": {

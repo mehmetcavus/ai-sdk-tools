@@ -205,7 +205,7 @@ export default function DocsContent() {
             </Link>
 
             <a
-              href="https://github.com/mehmetcavus/ai-sdk-tools"
+              href="https://github.com/midday-ai/ai-sdk-tools"
               target="_blank"
               rel="noopener noreferrer"
               className="group border border-[#2a2a2a] hover:border-[#404040] transition-colors p-8"
