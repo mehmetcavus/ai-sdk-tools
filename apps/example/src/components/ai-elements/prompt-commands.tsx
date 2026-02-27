@@ -638,7 +638,7 @@ function PromptCommandsPaletteContent() {
               const globalIndex = filteredAgents.length + index;
               return (
                 <button
-                  key={tool.name}
+                  key={`${tool.agent}-${tool.name}`}
                   type="button"
                   ref={(el) => {
                     itemRefs.current[globalIndex] = el;
