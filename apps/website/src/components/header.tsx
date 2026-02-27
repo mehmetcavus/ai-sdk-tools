@@ -124,7 +124,7 @@ export function Header() {
         {/* Right side - GitHub link and mobile menu button */}
         <div className="flex items-center space-x-4">
           <a
-            href="https://github.com/midday-ai/ai-sdk-tools"
+            href="https://github.com/mehmetcavus/ai-sdk-tools"
             target="_blank"
             rel="noopener noreferrer"
             className="text-secondary hover:text-[#d4d4d4] transition-colors p-1"

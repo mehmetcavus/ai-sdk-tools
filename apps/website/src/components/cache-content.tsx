@@ -360,7 +360,7 @@ const weatherTool = cached(expensiveWeatherTool)
                 Documentation →
               </a>
               <a
-                href="https://github.com/midday-ai/ai-sdk-tools/tree/main/packages/cache"
+                href="https://github.com/mehmetcavus/ai-sdk-tools/tree/main/packages/cache"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-4 py-2 border border-[#333] hover:border-[#555] transition-colors text-sm"

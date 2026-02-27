@@ -923,7 +923,7 @@ export default function App() {
             <h2 className="text-2xl font-normal mb-8">Next Steps</h2>
             <div className="grid md:grid-cols-2 gap-4">
               <Link
-                href="https://github.com/midday-ai/ai-sdk-tools/tree/main/packages/agents"
+                href="https://github.com/mehmetcavus/ai-sdk-tools/tree/main/packages/agents"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="border border-[#2a2a2a] hover:border-[#404040] transition-colors p-6 group"

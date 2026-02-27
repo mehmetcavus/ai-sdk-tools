@@ -206,7 +206,7 @@ Each package can be used independently with its own API. See individual package 
 
 - [Full Documentation](https://aisdk.tools)
 - [API Reference](https://aisdk.tools/docs)
-- [Examples](https://github.com/midday-ai/ai-sdk-tools/tree/main/apps/example)
+- [Examples](https://github.com/mehmetcavus/ai-sdk-tools/tree/main/apps/example)
 
 ## Features
 
@@ -232,7 +232,7 @@ MIT © [Midday](https://midday.ai)
 
 ## Links
 
-- [GitHub](https://github.com/midday-ai/ai-sdk-tools)
-- [Issues](https://github.com/midday-ai/ai-sdk-tools/issues)
-- [Discussions](https://github.com/midday-ai/ai-sdk-tools/discussions)
+- [GitHub](https://github.com/mehmetcavus/ai-sdk-tools)
+- [Issues](https://github.com/mehmetcavus/ai-sdk-tools/issues)
+- [Discussions](https://github.com/mehmetcavus/ai-sdk-tools/discussions)
 

@@ -31,7 +31,7 @@ export function Header({ onToggleHistory }: HeaderProps) {
       </div>
       <div className="fixed top-6 right-6 z-10 flex items-center gap-6">
         <a
-          href="https://github.com/midday-ai/ai-sdk-tools"
+          href="https://github.com/mehmetcavus/ai-sdk-tools"
           target="_blank"
           rel="noopener noreferrer"
         >

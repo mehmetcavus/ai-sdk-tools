@@ -187,7 +187,7 @@ export default function About() {
               </p>
               <div className="flex flex-wrap gap-4">
                 <a
-                  href="https://github.com/midday-ai/ai-sdk-tools"
+                  href="https://github.com/mehmetcavus/ai-sdk-tools"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-4 py-2 border border-[#333] hover:border-[#555] transition-colors text-sm"
@@ -203,7 +203,7 @@ export default function About() {
                   Follow @pontusab
                 </a>
                 <a
-                  href="https://github.com/midday-ai/ai-sdk-tools/issues"
+                  href="https://github.com/mehmetcavus/ai-sdk-tools/issues"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-4 py-2 border border-[#333] hover:border-[#555] transition-colors text-sm"
@@ -211,7 +211,7 @@ export default function About() {
                   Report Issues
                 </a>
                 <a
-                  href="https://github.com/midday-ai/ai-sdk-tools/discussions"
+                  href="https://github.com/mehmetcavus/ai-sdk-tools/discussions"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-4 py-2 border border-[#333] hover:border-[#555] transition-colors text-sm"
