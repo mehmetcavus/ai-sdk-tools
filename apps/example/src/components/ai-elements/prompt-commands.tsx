@@ -590,9 +590,9 @@ function PromptCommandsPaletteContent() {
     <PopoverContent
       className="p-0 max-h-[300px] overflow-y-auto w-[var(--radix-popover-trigger-width)] rounded-none"
       align="center"
-      side="bottom"
+      side="top"
       alignOffset={0}
-      sideOffset={55}
+      sideOffset={8}
       avoidCollisions={false}
       onOpenAutoFocus={(e) => e.preventDefault()}
     >
