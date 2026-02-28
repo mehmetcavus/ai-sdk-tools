@@ -3,7 +3,7 @@
 import type { ChatStatus, ToolUIPart } from "ai";
 import type { UIMessage } from "@ai-sdk/react";
 import { useDataPart } from "ai-sdk-tools/client";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { AgentStatus } from "@/types/agents";
 
 interface ChatStatusResult {
@@ -116,6 +116,18 @@ export function useChatStatus(
       hasTextContent,
     };
   }, [messages, status, agentStatusData]);
+
+  // Stabilize return value: reuse previous object when content is unchanged
+  const stableRef = useRef<ChatStatusResult>(result);
+  if (
+    stableRef.current.agentStatus === result.agentStatus &&
+    stableRef.current.currentToolCall === result.currentToolCall &&
+    stableRef.current.hasTextContent === result.hasTextContent
+  ) {
+    return stableRef.current;
+  }
+
+  stableRef.current = result;
 
   return result;
 }

@@ -3,7 +3,7 @@
 import type { UIMessage } from "@ai-sdk/react";
 import { PaperclipIcon } from "lucide-react";
 import Image from "next/image";
-import { memo, useMemo, useRef } from "react";
+import { memo, useMemo } from "react";
 import { FaviconStack } from "@/components/ai-elements/favicon-stack";
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Response } from "@/components/ai-elements/response";
@@ -92,32 +92,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
   isStreaming,
 }: ChatMessageItemProps) {
   const parts = message.parts || [];
-  const uniqueSources = useMemo(
-    () => getUniqueSources(parts),
-    [parts],
-  );
-
-  // DEBUG: trace ChatMessageItem re-renders (whole section: chart, text, sources)
-  const renderCountRef = useRef(0);
-  const prevRef = useRef({ isLastMessage, isStreaming, partsLength: parts.length });
-  renderCountRef.current += 1;
-  const trigger =
-    prevRef.current.partsLength !== parts.length
-      ? "parts"
-      : prevRef.current.isLastMessage !== isLastMessage
-        ? "isLastMessage"
-        : prevRef.current.isStreaming !== isStreaming
-          ? "isStreaming"
-          : "messageRef";
-  console.debug("[ChatMessageItem] render", {
-    messageId: message.id,
-    count: renderCountRef.current,
-    trigger,
-    partsLength: parts.length,
-    isLastMessage,
-    isStreaming,
-  });
-  prevRef.current = { isLastMessage, isStreaming, partsLength: parts.length };
+  const uniqueSources = useMemo(() => getUniqueSources(parts), [parts]);
 
   const textParts = parts.filter((part) => part.type === "text");
   const textContent = textParts
@@ -239,68 +214,24 @@ function isMessagesEqual(prev: UIMessage[], next: UIMessage[]): boolean {
   });
 }
 
-export const ChatMessages = memo(function ChatMessages({
-  messages,
-  isStreaming = false,
-}: ChatMessagesProps) {
-  // DEBUG: trace ChatMessages re-renders - trigger "parent" = ChatInterface re-rendered
-  const renderCountRef = useRef(0);
-  const prevPropsRef = useRef({ messages, isStreaming });
-  renderCountRef.current += 1;
+export const ChatMessages = memo(
+  function ChatMessages({ messages, isStreaming = false }: ChatMessagesProps) {
 
-  const messagesRefChanged = prevPropsRef.current.messages !== messages;
-  const isStreamingChanged =
-    prevPropsRef.current.isStreaming !== isStreaming;
-  const messageCountChanged =
-    prevPropsRef.current.messages.length !== messages.length;
-
-  const prevMessages = prevPropsRef.current.messages;
-  const sameMessageIds =
-    messagesRefChanged &&
-    prevMessages.length === messages.length &&
-    messages.every((m, i) => m.id === prevMessages[i]?.id);
-  const samePartsLengths =
-    sameMessageIds &&
-    messages.every(
-      (m, i) => (m.parts?.length ?? 0) === (prevMessages[i]?.parts?.length ?? 0),
+    return (
+      <>
+        {messages.map((message, index) => (
+          <ChatMessageItem
+            key={message.id}
+            message={message}
+            isLastMessage={index === messages.length - 1}
+            isStreaming={isStreaming}
+          />
+        ))}
+      </>
     );
-
-  const trigger =
-    messagesRefChanged && isStreamingChanged
-      ? "messages+isStreaming"
-      : messagesRefChanged
-        ? "messages"
-        : isStreamingChanged
-          ? "isStreaming"
-          : "parent";
-
-  console.debug("[ChatMessages] render", {
-    count: renderCountRef.current,
-    trigger,
-    messageCount: messages.length,
-    isStreaming,
-    messageCountChanged,
-    ...(messagesRefChanged && {
-      messagesRefNewButSameIds: sameMessageIds,
-      messagesRefNewButSameParts: samePartsLengths,
-    }),
-  });
-
-  prevPropsRef.current = { messages, isStreaming };
-
-  return (
-    <>
-      {messages.map((message, index) => (
-        <ChatMessageItem
-          key={message.id}
-          message={message}
-          isLastMessage={index === messages.length - 1}
-          isStreaming={isStreaming}
-        />
-      ))}
-    </>
-  );
-}, (prev, next) => {
-  if (prev.isStreaming !== next.isStreaming) return false;
-  return isMessagesEqual(prev.messages, next.messages);
-});
+  },
+  (prev, next) => {
+    if (prev.isStreaming !== next.isStreaming) return false;
+    return isMessagesEqual(prev.messages, next.messages);
+  },
+);

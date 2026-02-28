@@ -12,7 +12,8 @@ export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
 };
 
-export const Message = ({ className, from, ...props }: MessageProps) => (
+export const Message = ({ className, from, ...props }: MessageProps) => {
+  return (
   <div
     className={cn(
       "group flex w-full items-end justify-end gap-2 py-4",
@@ -21,7 +22,8 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
     )}
     {...props}
   />
-);
+  );
+};
 
 const messageContentVariants = cva(
   "is-user:dark flex flex-col gap-2 overflow-hidden rounded-lg text-sm",

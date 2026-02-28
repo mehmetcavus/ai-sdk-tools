@@ -2,7 +2,6 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { BookIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
 
 interface SourceItem {
   url: string;
@@ -26,21 +25,6 @@ function getFaviconUrl(url: string): string {
 }
 
 export function FaviconStack({ sources }: FaviconStackProps) {
-  const mountIdRef = useRef(Math.random().toString(36).slice(2, 8));
-
-  // DEBUG: trace mount vs re-render (animation runs only on mount)
-  useEffect(() => {
-    console.debug("[FaviconStack] MOUNTED", { id: mountIdRef.current });
-    return () => {
-      console.debug("[FaviconStack] UNMOUNTED", { id: mountIdRef.current });
-    };
-  }, []);
-
-  console.debug("[FaviconStack] render", {
-    id: mountIdRef.current,
-    sourcesCount: sources.length,
-  });
-
   if (sources.length === 0) return null;
 
   return (
@@ -53,12 +37,7 @@ export function FaviconStack({ sources }: FaviconStackProps) {
               href={source.url}
               target="_blank"
               rel="noreferrer"
-              initial={{
-                opacity: 0,
-                scale: 0.6,
-                x: 50,
-                filter: "blur(4px)",
-              }}
+              initial={false}
               animate={{
                 opacity: 1,
                 scale: 1,
