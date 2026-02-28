@@ -282,7 +282,7 @@ export class Agent<
       additionalOptions.experimental_context = executionContext;
     }
 
-    if (maxSteps) additionalOptions.maxSteps = maxSteps;
+    if (maxSteps) additionalOptions.stopWhen = stepCountIs(maxSteps);
     if (onStepFinish) additionalOptions.onStepFinish = onStepFinish;
 
     // Handle simple { messages } format (like working code)
@@ -719,7 +719,7 @@ export class Agent<
             const result = await currentAgent.stream({
               messages: messagesToSend,
               executionContext: executionContext,
-              maxSteps, // Limit tool calls per round
+              maxSteps, // Converted to stopWhen in stream()
               onStepFinish: async (step: unknown) => {
                 if (onEvent) {
                   await onEvent({

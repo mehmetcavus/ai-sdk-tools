@@ -70,24 +70,32 @@ const result = await supportAgent.generateText({
 
 Manage chat state globally with Zustand:
 
-```typescript
-import { useChat } from 'ai-sdk-tools';
+```tsx
+import { useChat, useChatMessages, useChatStatus } from 'ai-sdk-tools';
+import { DefaultChatTransport } from 'ai';
+import { useState } from 'react';
 
-export const useChatHook = useChat({
-  api: '/api/chat',
-});
-
-// Access chat state from anywhere
 function ChatComponent() {
-  const { messages, input, handleInputChange, handleSubmit } = useChatHook();
-  
+  const [input, setInput] = useState('');
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+    }),
+  });
+
   return (
-    <form onSubmit={handleSubmit}>
+    <div>
       {messages.map((msg) => (
         <div key={msg.id}>{msg.content}</div>
       ))}
-      <input value={input} onChange={handleInputChange} />
-    </form>
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        sendMessage({ role: 'user', content: input });
+        setInput('');
+      }}>
+        <input value={input} onChange={(e) => setInput(e.target.value)} />
+      </form>
+    </div>
   );
 }
 ```
@@ -223,7 +231,7 @@ Each package can be used independently with its own API. See individual package 
 ## Requirements
 
 - Node.js 18+
-- AI SDK v5.0.0 or higher
+- AI SDK v6.0.0 or higher
 - React 18+ (for React-specific features)
 
 ## License

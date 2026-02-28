@@ -131,7 +131,7 @@ function MessageList() {
                   className="text-xs font-mono leading-relaxed"
                   dangerouslySetInnerHTML={{
                     __html: highlight(`// Full TypeScript support
-const { messages, input, handleInputChange } = useChat<{
+const { messages, sendMessage, status } = useChat<{
   role: 'user' | 'assistant'
   content: string
 }>()`),
@@ -150,8 +150,8 @@ const { messages, input, handleInputChange } = useChat<{
                   className="text-xs font-mono leading-relaxed"
                   dangerouslySetInnerHTML={{
                     __html: highlight(`// Same API, better performance
-const { messages, input, handleSubmit } = useChat({
-  api: '/api/chat',
+const { messages, sendMessage, status } = useChat({
+  transport: new DefaultChatTransport({ api: '/api/chat' }),
   onFinish: (message) => console.log(message)
 })`),
                   }}
@@ -201,15 +201,21 @@ export const store = createAIStore({
                   dangerouslySetInnerHTML={{
                     __html: highlight(`// ChatInput.tsx
 import { useChat } from '@ai-sdk-tools/store'
+import { useState } from 'react'
 
 export function ChatInput() {
-  const { input, handleInputChange, handleSubmit } = useChat()
+  const [input, setInput] = useState('')
+  const { sendMessage } = useChat()
   
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={(e) => {
+      e.preventDefault()
+      sendMessage({ role: 'user', content: input })
+      setInput('')
+    }}>
       <input
         value={input}
-        onChange={handleInputChange}
+        onChange={(e) => setInput(e.target.value)}
         placeholder="Type a message..."
       />
     </form>
@@ -242,10 +248,10 @@ function useMessages() {
   return messages
 }
 
-// Custom hook for loading state
-function useIsLoading() {
-  const { isLoading } = useChat()
-  return isLoading
+// Custom hook for chat status
+function useChatLoading() {
+  const { status } = useChat()
+  return status === 'streaming' || status === 'submitted'
 }`),
                   }}
                 />
@@ -295,15 +301,15 @@ function useMessageCount() {
                   dangerouslySetInnerHTML={{
                     __html: highlight(`const {
   messages,        // Array of messages
-  input,          // Current input value
-  handleInputChange, // Input change handler
-  handleSubmit,   // Form submit handler
-  isLoading,      // Loading state
-  error,          // Error state
-  reload,         // Reload function
-  stop,           // Stop function
-  setMessages,    // Set messages function
-  setInput,       // Set input function
+  sendMessage,     // Send a message
+  regenerate,      // Regenerate last response
+  status,          // Chat status ('idle' | 'submitted' | 'streaming' | 'error' | 'ready')
+  error,           // Error state
+  stop,            // Stop function
+  setMessages,     // Set messages function
+  resumeStream,    // Resume interrupted stream
+  clearError,      // Clear error state
+  addToolResult,   // Add tool result
 } = useChat()`),
                   }}
                 />

@@ -4,7 +4,7 @@ import AgentsContent from "@/components/docs/agents-docs-content";
 export const metadata: Metadata = {
   title: "Agents Documentation - AI SDK Tools",
   description:
-    "Multi-agent orchestration for AI SDK v5. Build intelligent workflows with specialized agents, automatic handoffs, and seamless coordination. Works with any AI provider.",
+    "Multi-agent orchestration for AI SDK v6. Build intelligent workflows with specialized agents, automatic handoffs, and seamless coordination. Works with any AI provider.",
   keywords: [
     "AI agents",
     "multi-agent systems",
@@ -20,13 +20,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Agents Documentation - AI SDK Tools",
     description:
-      "Multi-agent orchestration for AI SDK v5. Build intelligent workflows with specialized agents and automatic handoffs.",
+      "Multi-agent orchestration for AI SDK v6. Build intelligent workflows with specialized agents and automatic handoffs.",
     url: "https://ai-sdk-tools.dev/docs/agents",
   },
   twitter: {
     title: "Agents Documentation - AI SDK Tools",
     description:
-      "Multi-agent orchestration for AI SDK v5. Build intelligent workflows with specialized agents and automatic handoffs.",
+      "Multi-agent orchestration for AI SDK v6. Build intelligent workflows with specialized agents and automatic handoffs.",
   },
   alternates: {
     canonical: "/docs/agents",

@@ -141,7 +141,7 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 
 function Chat() {
-  const { messages, sendMessage, isLoading } = useChat({
+  const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat'
     })
@@ -154,9 +154,9 @@ function Chat() {
       <MessageList messages={messages} />
       <MessageInput 
         onSend={sendMessage} 
-        disabled={isLoading} 
+        disabled={status === 'streaming'} 
       />
-      <StatusBar isLoading={isLoading} />
+      <StatusBar status={status} />
       <Sidebar messages={messages} />
     </div>
   )

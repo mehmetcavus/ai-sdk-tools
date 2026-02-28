@@ -41,13 +41,13 @@ The devtools will automatically detect and integrate with the store if available
 ### Basic Usage
 
 ```tsx
-import { AIDevtools } from '@ai-sdk-tools/devtools';
+import { AIDevtools } from "@ai-sdk-tools/devtools";
 
 function App() {
   return (
     <div>
       {/* Your AI app components */}
-      
+
       {/* Add the devtools component - only in development */}
       {process.env.NODE_ENV === "development" && <AIDevtools />}
     </div>
@@ -63,7 +63,7 @@ import { AIDevtools } from '@ai-sdk-tools/devtools';
 import { DefaultChatTransport } from 'ai';
 
 function ChatComponent() {
-  const { messages, input, handleInputChange, handleSubmit } = useChat({
+  const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat'
     }),
@@ -82,24 +82,28 @@ function ChatComponent() {
 ## Features
 
 ### Event Monitoring
+
 - **Tool calls** - Start, result, and error events
 - **Message streaming** - Text chunks, completions, and deltas
 - **Step tracking** - Multi-step AI processes
 - **Error handling** - Capture and debug errors
 
 ### Advanced Filtering
+
 - Filter by event type (tool calls, text events, errors, etc.)
 - Filter by tool name
 - Search through event data and metadata
 - Quick filter presets
 
 ### Performance Metrics
+
 - Real-time streaming speed (tokens/second)
 - Character streaming rate
 - Context window utilization
 - Event timing and duration
 
 ### Visual Interface
+
 - Resizable panel (drag to resize)
 - Live event indicators
 - Color-coded event types
@@ -118,13 +122,13 @@ function ChatComponent() {
     streamCapture: {
       enabled: true,
       endpoint: "/api/chat",
-      autoConnect: true
+      autoConnect: true,
     },
     throttle: {
       enabled: true,
       interval: 100, // ms
-      includeTypes: ["text-delta"] // Only throttle high-frequency events
-    }
+      includeTypes: ["text-delta"], // Only throttle high-frequency events
+    },
   }}
   debug={false} // Enable debug logging
 />
@@ -135,18 +139,14 @@ function ChatComponent() {
 ### Manual Event Integration
 
 ```tsx
-import { useAIDevtools } from '@ai-sdk-tools/devtools';
+import { useAIDevtools } from "@ai-sdk-tools/devtools";
 
 function MyComponent() {
-  const { 
-    events, 
-    clearEvents, 
-    toggleCapturing 
-  } = useAIDevtools({
+  const { events, clearEvents, toggleCapturing } = useAIDevtools({
     maxEvents: 500,
     onEvent: (event) => {
-      console.log('New event:', event);
-    }
+      console.log("New event:", event);
+    },
   });
 
   return (
@@ -165,9 +165,9 @@ function MyComponent() {
 const { filterEvents, getUniqueToolNames, getEventStats } = useAIDevtools();
 
 // Filter events
-const toolCallEvents = filterEvents(['tool-call-start', 'tool-call-result']);
-const errorEvents = filterEvents(['error']);
-const searchResults = filterEvents(undefined, 'search query');
+const toolCallEvents = filterEvents(["tool-call-start", "tool-call-result"]);
+const errorEvents = filterEvents(["error"]);
+const searchResults = filterEvents(undefined, "search query");
 
 // Get statistics
 const stats = getEventStats();

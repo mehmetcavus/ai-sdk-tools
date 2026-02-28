@@ -192,20 +192,12 @@ npm run build`),
                   className="text-xs font-mono leading-relaxed"
                   dangerouslySetInnerHTML={{
                     __html: highlight(`// Events are automatically captured
-const { messages, handleSubmit } = useChat({
-  tools: {
-    weather: {
-      description: 'Get weather information',
-      parameters: z.object({
-        location: z.string(),
-      }),
-      execute: async ({ location }) => {
-        // This will be monitored in DevTools
-        return { weather: 'sunny' }
-      },
-    },
-  },
-})`),
+const { messages, sendMessage } = useChat({
+  transport: new DefaultChatTransport({ api: '/api/chat' }),
+})
+
+// Tools are defined on the server route
+// DevTools automatically captures all tool calls`),
                   }}
                 />
               </div>

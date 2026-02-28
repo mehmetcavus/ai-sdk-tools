@@ -2,7 +2,7 @@
 
 [![npm version](https://badge.fury.io/js/@ai-sdk-tools%2Fagents.svg)](https://badge.fury.io/js/@ai-sdk-tools%2Fagents)
 
-Multi-agent orchestration for AI SDK v5. Build intelligent workflows with specialized agents, automatic handoffs, and seamless coordination. Works with any AI provider.
+Multi-agent orchestration for AI SDK v6. Build intelligent workflows with specialized agents, automatic handoffs, and seamless coordination. Works with any AI provider.
 
 ```bash
 npm install @ai-sdk-tools/agents ai zod
@@ -23,7 +23,7 @@ Complex tasks benefit from specialized expertise. Instead of a single model hand
 - **Context Preservation** - Full conversation history maintained across handoffs
 - **Provider Flexibility** - Use different models for different tasks (GPT-4 for analysis, Claude for writing)
 - **Programmatic Routing** - Pattern matching and automatic agent selection
-- **Production Ready** - Built on AI SDK v5 with streaming, error handling, and observability
+- **Production Ready** - Built on AI SDK v6 with streaming, error handling, and observability
 
 ### When to Use Agents
 

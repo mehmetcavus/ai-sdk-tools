@@ -519,11 +519,9 @@ function extractToolNameFromType(type: string): string {
  */
 function isAIStreamPart(dataPart: any): boolean {
   const aiStreamTypes = [
+    "text-start",
     "text-delta",
-    "text-done",
-    "tool-call",
-    "tool-result",
-    "data",
+    "text-end",
     "error",
     "finish",
   ];
@@ -531,7 +529,7 @@ function isAIStreamPart(dataPart: any): boolean {
 }
 
 /**
- * Parses a standard AI SDK stream part
+ * Parses a standard AI SDK v6 UI message stream part
  */
 function parseAIStreamPart(
   dataPart: any,
@@ -539,62 +537,44 @@ function parseAIStreamPart(
   timestamp: number,
 ): AIEvent | null {
   switch (dataPart.type) {
+    case "text-start":
+      return {
+        id: eventId,
+        timestamp,
+        type: "text-start",
+        data: {
+          id: dataPart.id,
+          providerMetadata: dataPart.providerMetadata,
+        },
+        metadata: {
+          messageId: dataPart.id,
+        },
+      };
+
     case "text-delta":
       return {
         id: eventId,
         timestamp,
         type: "text-delta",
-        data: dataPart,
+        data: {
+          id: dataPart.id,
+          delta: dataPart.delta || "",
+        },
         metadata: {
           messageId: dataPart.id,
         },
       };
 
-    case "text-done":
+    case "text-end":
       return {
         id: eventId,
         timestamp,
         type: "text-end",
-        data: dataPart,
+        data: {
+          id: dataPart.id,
+        },
         metadata: {
           messageId: dataPart.id,
-        },
-      };
-
-    case "tool-call":
-      return {
-        id: eventId,
-        timestamp,
-        type: "tool-call-start",
-        data: dataPart,
-        metadata: {
-          toolName: dataPart.toolName,
-          toolCallId: dataPart.toolCallId,
-          toolParams: dataPart.args || {},
-        },
-      };
-
-    case "tool-result":
-      return {
-        id: eventId,
-        timestamp,
-        type: "tool-call-result",
-        data: dataPart,
-        metadata: {
-          toolName: dataPart.toolName,
-          toolCallId: dataPart.toolCallId,
-          duration: dataPart.duration,
-        },
-      };
-
-    case "data":
-      return {
-        id: eventId,
-        timestamp,
-        type: "custom-data", // Custom data events
-        data: dataPart,
-        metadata: {
-          originalType: dataPart.type,
         },
       };
 

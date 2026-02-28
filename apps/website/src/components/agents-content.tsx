@@ -17,7 +17,7 @@ export default function AgentsContent() {
             </h1>
 
             <p className="text-base text-secondary max-w-3xl leading-relaxed font-light">
-              Multi-agent orchestration for AI SDK v5. Automatic handoffs,
+              Multi-agent orchestration for AI SDK v6. Automatic handoffs,
               programmatic routing, and seamless coordination across any AI
               provider. Perfect for complex tasks requiring distinct expertise.
               <strong className="text-[#d4d4d4]">
@@ -344,7 +344,7 @@ const orchestrator = new Agent({
           </div>
 
           <p className="text-xs text-[#555555] font-light">
-            Multi-agent orchestration for AI SDK v5. Works with any AI provider.
+            Multi-agent orchestration for AI SDK v6. Works with any AI provider.
           </p>
 
           <div className="pt-8">

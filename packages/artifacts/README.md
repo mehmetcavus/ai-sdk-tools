@@ -32,8 +32,7 @@ import { useChat } from '@ai-sdk-tools/store'; // Drop-in replacement for @ai-sd
 import { DefaultChatTransport } from 'ai';
 
 function ChatComponent() {
-  // Initialize chat (same API as @ai-sdk/react)
-  const { messages, input, handleInputChange, handleSubmit } = useChat({
+  const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat'
     })

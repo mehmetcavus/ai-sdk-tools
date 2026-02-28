@@ -182,13 +182,13 @@ function App() {
                   dangerouslySetInnerHTML={{
                     __html: highlight(`// Before: Props everywhere
 function App() {
-  const { messages, input, handleSubmit } = useChat()
+  const { messages, sendMessage, status } = useChat()
   
   return (
     <div>
       <Header messages={messages} />
       <Chat messages={messages} />
-      <Input input={input} onSubmit={handleSubmit} />
+      <Input onSend={sendMessage} disabled={status === 'streaming'} />
     </div>
   )
 }`),

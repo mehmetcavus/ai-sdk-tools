@@ -16,7 +16,7 @@ export default function AgentsDocsContent() {
               Agents
             </h1>
             <p className="text-base text-secondary max-w-3xl leading-relaxed font-light mb-12">
-              Multi-agent orchestration for AI SDK v5. Build intelligent
+              Multi-agent orchestration for AI SDK v6. Build intelligent
               workflows with specialized agents, automatic handoffs, and
               seamless coordination. Works with any AI provider.
               <strong className="text-[#d4d4d4]">
