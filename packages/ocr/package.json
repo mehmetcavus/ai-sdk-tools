@@ -45,8 +45,10 @@
     "type-check": "tsc --noEmit"
   },
   "peerDependencies": {
-    "ai": "^6.0.3",
-    "zod": "^4.1.12"
+    "ai": "^6.0.104",
+    "zod": "^4.1.12",
+    "@ai-sdk/mistral": "^3.0.20",
+    "@ai-sdk/google": "^3.0.33"
   },
   "peerDependenciesMeta": {
     "@ai-sdk/mistral": {
@@ -61,7 +63,7 @@
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "zod": "^4.1.12",
-    "ai": "^6.0.3"
+    "ai": "^6.0.104"
   },
   "optionalDependencies": {
     "unpdf": "^1.4.0"

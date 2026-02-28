@@ -46,7 +46,7 @@
     "type-check": "tsc --noEmit"
   },
   "peerDependencies": {
-    "ai": "^6.0.3"
+    "ai": "^6.0.104"
   },
   "peerDependenciesMeta": {
     "@ai-sdk-tools/artifacts": {
@@ -59,7 +59,7 @@
     "typescript": "^5.9.3",
     "vitest": "^4.0.16",
     "zod": "^4.2.1",
-    "ai": "^6.0.3",
+    "ai": "^6.0.104",
     "@ai-sdk-tools/artifacts": "workspace:*"
   },
   "publishConfig": {

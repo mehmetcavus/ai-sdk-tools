@@ -37,7 +37,7 @@
   "author": "Pontus Abrahamsson",
   "license": "MIT",
   "peerDependencies": {
-    "@ai-sdk/react": ">=2.0.0",
+    "@ai-sdk/react": ">=3.0.0",
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0",
     "@ai-sdk-tools/store": "*"
@@ -54,7 +54,7 @@
     "react-dom": "^19.2.3",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "@ai-sdk/react": "^3.0.3",
+    "@ai-sdk/react": "^3.0.106",
     "@ai-sdk-tools/store": "workspace:*"
   },
   "dependencies": {
@@ -64,7 +64,7 @@
     "@mui/material": "^7.3.6",
     "@types/dagre": "^0.7.53",
     "@xyflow/react": "^12.10.0",
-    "ai": "^6.0.3",
+    "ai": "^6.0.104",
     "dagre": "^0.8.5",
     "react-json-view-lite": "^2.5.0"
   },
