@@ -1,6 +1,7 @@
 "use client";
 
-import type { ChatStatus, ToolUIPart, UIMessage } from "ai";
+import type { ChatStatus, ToolUIPart } from "ai";
+import type { UIMessage } from "@ai-sdk/react";
 import { useDataPart } from "ai-sdk-tools/client";
 import { useMemo } from "react";
 import type { AgentStatus } from "@/types/agents";

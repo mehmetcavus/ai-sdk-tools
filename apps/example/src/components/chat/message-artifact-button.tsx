@@ -1,6 +1,6 @@
 "use client";
 
-import type { UIMessage } from "ai";
+import type { UIMessage } from "@ai-sdk/react";
 import { useArtifacts } from "ai-sdk-tools/client";
 import { BarChart3 } from "lucide-react";
 import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
@@ -12,6 +12,8 @@ import {
 const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   revenue: "Revenue",
   "balance-sheet": "Balance Sheet",
+  "profit-loss": "Profit & Loss",
+  "cash-flow": "Cash Flow",
 };
 
 interface MessageArtifactButtonProps {

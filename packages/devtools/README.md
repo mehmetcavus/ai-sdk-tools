@@ -58,7 +58,7 @@ function App() {
 ### With useChat Integration
 
 ```tsx
-import { useChat } from 'ai/react';
+import { useChat } from '@ai-sdk/react';
 import { AIDevtools } from '@ai-sdk-tools/devtools';
 import { DefaultChatTransport } from 'ai';
 

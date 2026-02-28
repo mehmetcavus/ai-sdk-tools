@@ -1,4 +1,4 @@
-import type { UIMessage } from "ai";
+import type { UIMessage } from "@ai-sdk/react";
 import { marked } from "marked";
 import { parseIncompleteMarkdown } from "@/components/ai-elements/parse-incomplete-markdown";
 

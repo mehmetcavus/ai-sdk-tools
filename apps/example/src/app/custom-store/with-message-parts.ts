@@ -1,5 +1,5 @@
 "use client";
-import type { UIMessage } from "ai";
+import type { UIMessage } from "@ai-sdk/react";
 import type { StateCreator } from "zustand";
 import type { StoreState as BaseChatStoreState } from "@ai-sdk-tools/store";
 
