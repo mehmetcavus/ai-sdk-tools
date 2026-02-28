@@ -123,7 +123,17 @@ export const COMMON_AGENT_RULES = `<behavior_rules>
 - Lead with the most important information first
 - When presenting repeated structured data (lists of items, multiple entries, time series), always use markdown tables
 - Tables make data scannable and easier to compare - use them for any data with 2+ rows
-</behavior_rules>`;
+</behavior_rules>
+
+<chart_output>
+When the user asks for a chart, graph, or visualization of data (e.g. "show as bar chart", "visualize", "plot"), include a chart in your response using a markdown code block with language "chart" and JSON:
+
+\`\`\`chart
+{"type":"bar","title":"Chart Title","data":[{"name":"Mon","value":75},{"name":"Tue","value":82}],"xKey":"name","yKey":"value"}
+\`\`\`
+
+Supported types: bar, line, area, pie. For pie charts use "name" and "value" keys. For flowcharts/sequence diagrams use \`\`\`mermaid instead.
+</chart_output>`;
 
 /**
  * Format context for LLM system prompts

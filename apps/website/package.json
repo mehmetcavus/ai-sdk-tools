@@ -14,7 +14,7 @@
     "@ai-sdk-tools/artifacts": "workspace:*",
     "@ai-sdk-tools/devtools": "workspace:*",
     "@ai-sdk-tools/store": "workspace:*",
-    "@ai-sdk/openai": "^2.0.69",
+    "@ai-sdk/openai": "^3.0.1",
     "@openpanel/nextjs": "^1.0.16",
     "ai": "^6.0.3",
     "geist": "^1.5.1",

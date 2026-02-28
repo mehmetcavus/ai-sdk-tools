@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   revenue: "Revenue",
   "balance-sheet": "Balance Sheet",
+  "profit-loss": "Profit & Loss",
+  "cash-flow": "Cash Flow",
 };
 
 export function ArtifactTypeTabs() {

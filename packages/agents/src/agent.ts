@@ -10,7 +10,6 @@ import {
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
-  generateObject,
   generateText,
   type LanguageModel,
   type ModelMessage,
@@ -21,6 +20,7 @@ import {
   type UIMessage,
   type UIMessageStreamOnFinishCallback,
   type UIMessageStreamWriter,
+  Output,
 } from "ai";
 import { z } from "zod";
 import { createExecutionContext } from "./context.js";
@@ -1366,15 +1366,15 @@ Good suggestions are:
           .describe(`Array of prompt suggestions (2-5 words each)`),
       });
 
-      // Generate suggestions using structured output
-      const { object } = await generateObject({
+      // Generate suggestions using structured output (AI SDK v6: generateText + Output.object)
+      const { output } = await generateText({
         model,
         system: instructions,
         prompt: conversationContext,
-        schema: suggestionsSchema,
+        output: Output.object({ schema: suggestionsSchema }),
       });
 
-      const { prompts } = object;
+      const { prompts } = output;
 
       // Stream suggestions as transient data part
       writeSuggestions(writer, prompts);

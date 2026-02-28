@@ -4,6 +4,8 @@ import { useArtifacts } from "ai-sdk-tools/client";
 import { parseAsString, useQueryState } from "nuqs";
 import { ArtifactTypeTabs } from "./artifact-type-tabs";
 import { BalanceSheetCanvas } from "./balance-sheet-canvas";
+import { CashFlowCanvas } from "./cash-flow-canvas";
+import { ProfitLossCanvas } from "./profit-loss-canvas";
 import { RevenueCanvas } from "./revenue-canvas";
 
 export function ArtifactCanvas() {
@@ -36,7 +38,10 @@ export function ArtifactCanvas() {
         return <BalanceSheetCanvas />;
       case "revenue":
         return <RevenueCanvas />;
-      // Add more artifact types here
+      case "profit-loss":
+        return <ProfitLossCanvas />;
+      case "cash-flow":
+        return <CashFlowCanvas />;
       default:
         return null;
     }

@@ -1,6 +1,12 @@
 import { isToolUIPart, type ModelMessage, type UIMessage } from "ai";
 
 /**
+ * In AI SDK v6, isToolUIPart checks both static and dynamic tool parts.
+ * We use it here to strip callProviderMetadata from all tool UI parts
+ * (static and dynamic) to prevent duplicate ID errors.
+ */
+
+/**
  * Extract text content from a ModelMessage.
  * Handles both string content and content arrays with text parts.
  *
@@ -51,6 +57,7 @@ export function stripMetadata(messages: UIMessage[]): UIMessage[] {
         sanitizedPart.providerMetadata = undefined;
       }
 
+      // isToolUIPart (v6) checks both static and dynamic tool parts
       if (
         isToolUIPart(sanitizedPart) &&
         "callProviderMetadata" in sanitizedPart

@@ -35,6 +35,10 @@ ${COMMON_AGENT_RULES}
 - Default to text responses, use artifacts only when requested
 - For "balance sheet report" requests, use the balanceSheet tool with useArtifact: true to show the canvas
 - For "balance sheet", "show me balance sheet" requests, use the balanceSheet tool to show the canvas
+- For "profit & loss", "P&L", "profit and loss" with charts/visuals, use profitLoss with useArtifact: true
+- For "cash flow" with charts/visuals, use cashFlow with useArtifact: true
+- For "revenue" with charts/visuals, use revenue with useArtifact: true
+- When the user asks for "financial reports with charts", "create charts", "visual charts", or "visualize" - use useArtifact: true on the relevant tools (profitLoss, cashFlow, balanceSheet, revenue). NEVER try to embed or describe chart images in your text response - the charts are rendered in the canvas.
 - When providing text responses for financial data, mention that visual reports are available (e.g., "You can also ask for a visual balance sheet report")
 - When the user asks for multiple years/periods (e.g., "revenue trends for 2023, 2022, 2021"), call the same tool multiple times - once for each year/period with useArtifact: true. Each call will create a separate artifact that can be navigated via pagination.
 - Use only ONE tool per query - don't call multiple different tools, but calling the same tool multiple times with different parameters is allowed when multiple periods are requested

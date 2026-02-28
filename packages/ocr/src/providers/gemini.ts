@@ -1,4 +1,4 @@
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { retryCall } from "../utils.js";
 import type { ExtractOptions, ProviderResult } from "./types.js";
 
@@ -42,9 +42,9 @@ export async function extractWithGemini<T>(
 
     const result = await retryCall(
       () =>
-        generateObject({
+        generateText({
           model,
-          schema: options.schema,
+          output: Output.object({ schema: options.schema }),
           temperature: 0.1,
           abortSignal: AbortSignal.timeout(options.timeout || 20000),
           messages: [
@@ -71,7 +71,7 @@ export async function extractWithGemini<T>(
 
     return {
       success: true,
-      result: result.object as T,
+      result: result.output as T,
       duration: Date.now() - startTime,
     };
   } catch (error) {

@@ -48,55 +48,54 @@ export class StreamInterceptor {
       return response;
     }
 
-    try {
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
 
-      // Create a new readable stream that we can intercept
-      const stream = new ReadableStream({
-        start: (controller) => {
-          const pump = async (): Promise<void> => {
-            try {
-              const { done, value } = await reader.read();
+    // Create a new readable stream that we can intercept
+    const stream = new ReadableStream({
+      start: (controller) => {
+        const pump = async (): Promise<void> => {
+          try {
+            const { done, value } = await reader.read();
 
-              if (done) {
-                controller.close();
-                return;
-              }
-
-              // CRITICAL: Pass the original chunk through FIRST
-              // This ensures the original stream is never blocked
-              controller.enqueue(value);
-
-              try {
-                const chunk = decoder.decode(value, { stream: true });
-                this.parseSSEChunk(chunk);
-              } catch (parseError) {
-                // Log parsing errors but don't break the stream
-              }
-
-              return pump();
-            } catch (error) {
-              // Forward stream errors to the original consumer
-              controller.error(error);
+            if (done) {
+              controller.close();
+              return;
             }
-          };
 
-          return pump();
-        },
-      });
+            // CRITICAL: Pass the original chunk through FIRST
+            // This ensures the original stream is never blocked
+            controller.enqueue(value);
 
-      // Return a new response with our intercepted stream
-      // Preserve ALL original response properties
-      return new Response(stream, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: new Headers(response.headers), // Clone headers to avoid mutation
-      });
-    } catch (error) {
-      // If anything goes wrong with our interception, return the original response
-      return response;
-    }
+            try {
+              const chunk = decoder.decode(value, { stream: true });
+              this.parseSSEChunk(chunk);
+            } catch {
+              // Log parsing errors but don't break the stream
+            }
+
+            return pump();
+          } catch (error) {
+            // Forward stream errors to the original consumer
+            controller.error(error);
+          }
+        };
+
+        return pump();
+      },
+      cancel: (reason) => {
+        // When consumer cancels, cancel the underlying reader to avoid dangling resources
+        reader.cancel(reason);
+      },
+    });
+
+    // Return a new response with our intercepted stream
+    // Preserve ALL original response properties
+    return new Response(stream, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: new Headers(response.headers), // Clone headers to avoid mutation
+    });
   }
 
   private parseSSEChunk(chunk: string): void {
@@ -183,9 +182,10 @@ export class StreamInterceptor {
               try {
                 return await this.interceptStreamResponse(response);
               } catch (interceptError) {
-                // If interception fails, disable future interceptions and return original response
+                // Body is already consumed by getReader() - cannot return original.
+                // Disable future interceptions and rethrow so caller gets the error.
                 this.hasErrors = true;
-                return response;
+                throw interceptError;
               }
             } else {
               // Return original response if not successful or no body
