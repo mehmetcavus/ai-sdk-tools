@@ -46,12 +46,13 @@ export function ChatArtifactLayout({
         {hasArtifacts && <ArtifactCanvas />}
       </div>
 
-      {/* Main chat area - container that slides left when canvas opens */}
+      {/* Main chat area - slides left when canvas opens.
+          flex-col in empty state stacks EmptyStateHeading + input area vertically. */}
       <div
         className={cn(
           "relative flex-1 transition-all duration-300 ease-in-out",
           isCanvasOpen && "mr-[600px]",
-          !hasMessages && "flex items-center justify-center",
+          !hasMessages && "flex flex-col items-center justify-center",
         )}
       >
         {children({ isCanvasOpen })}

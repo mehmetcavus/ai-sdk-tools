@@ -46,8 +46,12 @@ function ChartContainer({
     typeof RechartsPrimitive.ResponsiveContainer
   >["children"]
 }) {
-  const uniqueId = React.useId()
-  const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
+  // Derive a deterministic chart ID from config keys instead of React.useId().
+  // useId() produces different values on server vs client when the fiber tree
+  // structure shifts (e.g., conditional rendering around the canvas), causing
+  // hydration mismatches on the data-chart attribute and injected <style> tag.
+  const stableKey = id || Object.keys(config).sort().join("-")
+  const chartId = `chart-${stableKey}`
 
   return (
     <ChartContext.Provider value={{ config }}>
@@ -61,7 +65,8 @@ function ChartContainer({
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <RechartsPrimitive.ResponsiveContainer minWidth={0} minHeight={0}>
+        {/* initialDimension avoids Recharts warning: "width(-1) and height(-1) should be > 0" */}
+        <RechartsPrimitive.ResponsiveContainer minWidth={0} minHeight={0} initialDimension={{ width: 1, height: 1 }}>
           {children}
         </RechartsPrimitive.ResponsiveContainer>
       </div>

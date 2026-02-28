@@ -24,8 +24,9 @@ import {
   ChatMessages,
   ChatStatusIndicators,
   ChatSync,
-  EmptyState,
+  EmptyStateHeading,
   SuggestedPrompts,
+  SuggestionPills,
 } from "@/components/chat";
 import { Header } from "@/components/header";
 import { useChatInterface } from "@/hooks/use-chat-interface";
@@ -122,10 +123,9 @@ export function ChatInterface() {
       )}
 
       <ChatArtifactLayout hasMessages={hasMessages}>
-        {({ isCanvasOpen }) =>
-          hasMessages ? (
-            <>
-              {/* Conversation view - messages with absolute positioning for proper height */}
+        {({ isCanvasOpen }) => (
+          <>
+            {hasMessages ? (
               <div className="absolute inset-0 flex flex-col">
                 <div
                   className={cn(
@@ -158,24 +158,55 @@ export function ChatInterface() {
                   />
                 </Conversation>
               </div>
+            ) : (
+              <EmptyStateHeading />
+            )}
 
-              {/* Fixed input at bottom - respects parent container boundaries */}
+            {/*
+             * HYDRATION FIX: Input area must always be at Fragment child index 1.
+             *
+             * Previously, ChatInput was rendered inside <EmptyState> (depth ~8)
+             * when !hasMessages, but at depth ~5 when hasMessages. This tree
+             * position shift caused React.useId() in Radix Popover/DropdownMenu
+             * to produce different IDs on SSR vs client hydration, leading to
+             * intermittent aria-controls/id attribute mismatches.
+             *
+             * By always rendering chatInput at the same sibling position (child 1
+             * of this Fragment), the fiber tree is stable regardless of hasMessages.
+             *
+             * NOTE: Chrome browser extensions (Grammarly, password managers, etc.)
+             * may still inject DOM elements before hydration, causing unrelated
+             * data-attribute mismatches that are outside our control.
+             */}
+            <div
+              className={cn(
+                hasMessages
+                  ? "fixed bottom-0 left-0 z-50 transition-all duration-300 ease-in-out"
+                  : "w-full max-w-2xl px-4",
+                hasMessages &&
+                  (isCanvasOpen ? "right-[600px]" : "right-0"),
+              )}
+            >
               <div
                 className={cn(
-                  "fixed bottom-0 left-0 z-50 transition-all duration-300 ease-in-out",
-                  isCanvasOpen ? "right-[600px]" : "right-0",
+                  "w-full",
+                  hasMessages && "pb-4 max-w-2xl mx-auto",
                 )}
               >
-                <div className="w-full pb-4 max-w-2xl mx-auto">
+                {/* Always rendered (hidden via CSS) to keep fiber tree stable */}
+                <div className={cn(!hasMessages && "hidden")}>
                   <SuggestedPrompts delay={1} />
-                  {chatInput}
                 </div>
+                {chatInput}
+                {!hasMessages && (
+                  <div className="mt-8">
+                    <SuggestionPills />
+                  </div>
+                )}
               </div>
-            </>
-          ) : (
-            <EmptyState>{chatInput}</EmptyState>
-          )
-        }
+            </div>
+          </>
+        )}
       </ChatArtifactLayout>
     </div>
   );
