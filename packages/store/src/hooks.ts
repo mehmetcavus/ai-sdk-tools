@@ -468,19 +468,24 @@ export function createChatStoreCreator<TMessage extends UIMessage>(
 
       _syncState: (newState) => {
         markLastAction("chat:_syncState");
-        batchUpdates(() => {
-          set(
-            {
-              ...newState,
-              _memoizedSelectors: new Map(), // Clear memoized selectors on sync
-            },
-            false,
-            // 'syncFromUseChat',
-          );
-          if (newState.messages) {
-            throttledMessagesUpdater?.();
-          }
-        });
+        // Synchronous — no batchUpdates. This is called from useChat's useEffect
+        // which already ran after render. Wrapping in batchUpdates (rAF/scheduler)
+        // adds multiple frames of delay that breaks streaming text display.
+        set(
+          {
+            ...newState,
+            _memoizedSelectors: new Map(),
+          },
+          false,
+        );
+        if (newState.messages) {
+          const state = get();
+          const newThrottledMessages = [...state.messages];
+          state._messageIndex.update(newThrottledMessages);
+          set({
+            _throttledMessages: newThrottledMessages,
+          });
+        }
       },
 
       reset: () => {

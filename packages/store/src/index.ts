@@ -27,8 +27,11 @@ export {
 export {
   type UseChatHelpers,
   type UseChatOptions,
+  type UseChatOptionsWithPerformance,
   useChat,
 } from "./use-chat";
+// ChatSync - isolates useOriginalChat so UI only re-renders on store updates
+export { ChatSync } from "./chat-sync";
 // Data parts hooks
 export {
   type DataPart,

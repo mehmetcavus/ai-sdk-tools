@@ -89,6 +89,17 @@ function MessageCounter() {
 }
 ```
 
+## Recommended Pattern: ChatSync + Store Hooks
+
+For minimal re-renders during streaming, use **ChatSync** to host `useChat` and read state via store hooks. `useChat` wraps `useOriginalChat` (@ai-sdk/react), which uses `useSyncExternalStore`—any component that calls it re-renders on every stream chunk. By isolating it in ChatSync (which renders null), only ChatSync re-renders; your UI components re-render only when the Zustand store updates.
+
+```tsx
+<>
+  <ChatSync options={{ id: chatId, transport }} />
+  <ChatInterface />  {/* Uses useChatMessages, useChatStatus, useChatActions */}
+</>
+```
+
 ## Advanced Features
 
 ### Message Virtualization
@@ -184,8 +195,8 @@ function Chat() {
 
 ```tsx
 // Core chat functionality
-const chat = useChat(options)           // Enhanced useChat with performance
-const messages = useChatMessages()      // Get all messages
+const chat = useChat(options)           // Enhanced useChat (causes re-renders on stream; use ChatSync for perf)
+const messages = useChatMessages()      // Get all messages (Zustand - re-renders only on store update)
 const status = useChatStatus()          // Chat status
 const error = useChatError()            // Error state
 const id = useChatId()                  // Chat ID
@@ -208,6 +219,14 @@ const actions = useChatActions()        // All actions object
   <YourApp />
 </Provider>
 ```
+
+### ChatSync
+
+```tsx
+<ChatSync options={{ id: chatId, transport }} />
+```
+
+Hosts `useChat` so sibling components using store hooks only re-render when the store updates.
 
 ## TypeScript Support
 

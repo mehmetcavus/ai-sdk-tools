@@ -1,3 +1,5 @@
+export { ChatArtifactLayout } from "./chat-artifact-layout";
+export { ChatSync } from "./chat-sync";
 export { ChatHeader } from "./chat-header";
 export { ChatHistory } from "./chat-history";
 export { ChatInput, type ChatInputMessage } from "./chat-input";

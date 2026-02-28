@@ -1,3 +1,11 @@
+/**
+ * useChat wraps useOriginalChat (@ai-sdk/react) and syncs to the Zustand store.
+ *
+ * IMPORTANT: useOriginalChat uses useSyncExternalStore internally. Any component
+ * that calls useChat will re-render on every stream chunk. For minimal re-renders,
+ * use ChatSync (which calls useChat and renders null) as a sibling of your UI,
+ * and read state via useChatMessages, useChatStatus, useChatActions.
+ */
 import {
   type UIMessage,
   type UseChatHelpers,
@@ -5,7 +13,6 @@ import {
   useChat as useOriginalChat,
 } from "@ai-sdk/react";
 import { useCallback, useEffect, useRef } from "react";
-import { useStore } from "zustand";
 import { type StoreState, useChatStoreApi } from "./hooks";
 
 export type { UseChatOptions, UseChatHelpers };
@@ -21,8 +28,6 @@ export type UseChatOptionsWithPerformance<
   TMessage extends UIMessage = UIMessage,
 > = UseChatOptions<TMessage> & {
   store?: CompatibleChatStore<TMessage>;
-  // Additional performance options
-  enableBatching?: boolean;
 };
 
 export function useChat<TMessage extends UIMessage = UIMessage>(
@@ -30,7 +35,6 @@ export function useChat<TMessage extends UIMessage = UIMessage>(
 ): UseChatHelpers<TMessage> {
   const {
     store: customStore,
-    enableBatching = true,
     ...originalOptions
   } = options;
 
@@ -130,27 +134,16 @@ export function useChat<TMessage extends UIMessage = UIMessage>(
 
     const chatState = { ...stateData, ...functionsData };
 
-    if (enableBatching) {
-      // Use requestAnimationFrame for batching if available
-    if (
-      typeof window !== "undefined" &&
-      typeof window.requestAnimationFrame === "function"
-    ) {
-      window.requestAnimationFrame(() => syncState(chatState));
-    } else {
-      syncState(chatState);
-    }
-    } else {
-      syncState(chatState);
-    }
+    // Sync immediately — no requestAnimationFrame. Each deferred frame adds ~16ms
+    // of latency; with batchUpdates in _syncState that compounds to 4+ frames,
+    // making streaming text appear frozen until the whole response arrives.
+    syncState(chatState);
   }, [
-    // Only depend on data that actually changes, not function references
     chatHelpers.id,
     chatHelpers.messages,
     chatHelpers.error,
     chatHelpers.status,
     syncState,
-    enableBatching,
     chatHelpers.resumeStream,
     chatHelpers.clearError,
     chatHelpers.sendMessage,
@@ -161,15 +154,12 @@ export function useChat<TMessage extends UIMessage = UIMessage>(
     chatHelpers.addToolResult,
   ]);
 
-  // Return the store's messages as the source of truth, not chatHelpers.messages
-  // Subscribe to store messages so this is reactive
-  const storeMessages = useStore(
-    store as any,
-    (state: any) => state.messages as TMessage[],
-  );
-
+  // Return chatHelpers.messages directly for streaming. The store sync uses
+  // batchUpdates + requestAnimationFrame which defers updates—causing "first
+  // chunk then whole response" instead of smooth streaming. chatHelpers.messages
+  // comes from AI SDK's useOriginalChat and streams in real time.
   return {
     ...chatHelpers,
-    messages: storeMessages || chatHelpers.messages,
+    messages: chatHelpers.messages,
   };
 }
