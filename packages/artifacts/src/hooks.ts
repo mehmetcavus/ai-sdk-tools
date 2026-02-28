@@ -611,10 +611,16 @@ export function useArtifacts(
         valueWasSetRef.current &&
         currentValue === null);
 
+    // Skip if activeType is dismissed — auto-restore will handle it next render
+    const willBeRestored =
+      artifactsData.activeType !== null &&
+      dismissedSet.has(artifactsData.activeType);
+
     if (
       artifactsData.available.length > 0 &&
       (!artifactsData.activeType ||
         !artifactsData.available.includes(artifactsData.activeType)) &&
+      !willBeRestored &&
       !shouldSkipAutoActivate
     ) {
       // Set the first available tab as active (use setValue to mark ref)
@@ -623,6 +629,7 @@ export function useArtifacts(
   }, [
     artifactsData.available,
     artifactsData.activeType,
+    dismissedSet,
     externalValue,
     currentValue,
     setValue,

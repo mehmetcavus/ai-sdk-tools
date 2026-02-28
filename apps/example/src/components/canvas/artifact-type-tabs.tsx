@@ -30,6 +30,13 @@ export function ArtifactTypeTabs() {
 
   const { available, activeType, byType } = data;
 
+  const labelKeys = Object.keys(ARTIFACT_TYPE_LABELS);
+  const sortedAvailable = [...available].sort((a, b) => {
+    const ai = labelKeys.indexOf(a);
+    const bi = labelKeys.indexOf(b);
+    return (ai === -1 ? Infinity : ai) - (bi === -1 ? Infinity : bi);
+  });
+
   const handleTabClick = useCallback(
     (type: string) => {
       actions.setValue(type);
@@ -66,7 +73,7 @@ export function ArtifactTypeTabs() {
 
   return (
     <div className="flex items-center gap-1 h-10 min-h-10 max-h-10 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 overflow-x-auto overflow-y-hidden">
-      {available.map((type) => {
+      {sortedAvailable.map((type) => {
         const isActive = type === activeType;
         const label = ARTIFACT_TYPE_LABELS[type] || type;
         const versions = byType[type] || [];

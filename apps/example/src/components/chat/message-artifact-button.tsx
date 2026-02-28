@@ -1,13 +1,9 @@
 "use client";
 
 import type { UIMessage } from "@ai-sdk/react";
-import { useArtifacts } from "ai-sdk-tools/client";
 import { BarChart3 } from "lucide-react";
-import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
-import {
-  extractArtifactIdFromMessage,
-  extractArtifactTypeFromMessage,
-} from "@/lib/extract-artifact-info";
+import { parseAsString, useQueryState } from "nuqs";
+import { extractAllArtifactsFromMessage } from "@/lib/extract-artifact-info";
 
 const ARTIFACT_TYPE_LABELS: Record<string, string> = {
   revenue: "Revenue",
@@ -21,60 +17,49 @@ interface MessageArtifactButtonProps {
 }
 
 export function MessageArtifactButton({ message }: MessageArtifactButtonProps) {
-  const [data, actions] = useArtifacts();
   const [selectedType, setSelectedType] = useQueryState(
     "artifact-type",
     parseAsString,
   );
-  const [selectedVersion, setSelectedVersion] = useQueryState(
-    "version",
-    parseAsInteger.withDefault(0),
-  );
 
-  const artifactType = extractArtifactTypeFromMessage(message);
-  const artifactId = extractArtifactIdFromMessage(message);
+  const artifacts = extractAllArtifactsFromMessage(message);
 
-  if (!artifactType || !artifactId) {
+  if (artifacts.length === 0) {
     return null;
   }
 
-  const label = ARTIFACT_TYPE_LABELS[artifactType] || artifactType;
-
-  // Find the artifact's index in the versions array
-  const artifactsOfType = data.byType[artifactType] || [];
-  const artifactIndex = artifactsOfType.findIndex(
-    (artifact) => artifact.id === artifactId,
-  );
-
-  // Check if this exact artifact is active (both type and version match)
-  const isActive =
-    selectedType === artifactType &&
-    artifactIndex >= 0 &&
-    selectedVersion === artifactIndex;
-
-  const handleClick = () => {
-    actions.setValue(artifactType);
-    setSelectedType(artifactType);
-    // Navigate to the specific artifact version
-    if (artifactIndex >= 0) {
-      setSelectedVersion(artifactIndex);
-    }
-  };
+  const labelKeys = Object.keys(ARTIFACT_TYPE_LABELS);
+  const sortedArtifacts = [...artifacts].sort((a, b) => {
+    const ai = labelKeys.indexOf(a.type);
+    const bi = labelKeys.indexOf(b.type);
+    return (ai === -1 ? Infinity : ai) - (bi === -1 ? Infinity : bi);
+  });
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={`inline-flex items-center gap-1.5 text-xs transition-colors ${
-        isActive
-          ? "text-primary hover:text-primary/80"
-          : "text-muted-foreground hover:text-foreground"
-      }`}
-      aria-label={`Open ${label} canvas`}
-      title={`Open ${label} canvas`}
-    >
-      <BarChart3 className="h-3.5 w-3.5" />
-      <span>{label}</span>
-    </button>
+    <div className="flex flex-wrap items-center gap-3">
+      {sortedArtifacts.map((artifact) => {
+        const label =
+          ARTIFACT_TYPE_LABELS[artifact.type] || artifact.type;
+        const isActive = selectedType === artifact.type;
+
+        return (
+          <button
+            key={`${artifact.type}:${artifact.id}`}
+            type="button"
+            onClick={() => setSelectedType(artifact.type)}
+            className={`inline-flex items-center gap-1.5 text-xs transition-colors ${
+              isActive
+                ? "text-primary hover:text-primary/80"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            aria-label={`Open ${label} canvas`}
+            title={`Open ${label} canvas`}
+          >
+            <BarChart3 className="h-3.5 w-3.5" />
+            <span>{label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
