@@ -77,6 +77,7 @@ export class Agent<
     | Record<string, Tool>
     | ((context: TContext) => Record<string, Tool>);
   private readonly modelSettings?: Record<string, unknown>;
+  private readonly maxTurns: number;
   // Cache for system prompt construction
   private _cachedSystemPrompt?: string;
   private _cacheKey?: string;
@@ -94,6 +95,7 @@ export class Agent<
     this.model = config.model;
     this.handoffAgents = config.handoffs || [];
     this.modelSettings = config.modelSettings;
+    this.maxTurns = config.maxTurns || 10;
 
     // Store tools config (will be resolved at runtime)
     this.configuredTools = config.tools || {};
@@ -282,7 +284,15 @@ export class Agent<
       additionalOptions.experimental_context = executionContext;
     }
 
-    if (maxSteps) additionalOptions.stopWhen = stepCountIs(maxSteps);
+    // Use the minimum of route-level maxSteps and the agent's own maxTurns.
+    // Without this, a forced toolChoice (e.g. { type: "tool", toolName: "handoff_to_agent" })
+    // would repeat the tool call for every step up to maxSteps, because the AI SDK loop
+    // only stops on a non-tool-calls finish reason or a stopWhen condition — and a forced
+    // toolChoice never produces a non-tool-calls finish reason.
+    const effectiveSteps = maxSteps
+      ? Math.min(maxSteps, this.maxTurns)
+      : this.maxTurns;
+    additionalOptions.stopWhen = stepCountIs(effectiveSteps);
     if (onStepFinish) additionalOptions.onStepFinish = onStepFinish;
 
     // Handle simple { messages } format (like working code)
