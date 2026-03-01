@@ -1,4 +1,3 @@
-import { openai } from "@ai-sdk/openai";
 import {
   createInvoiceTool,
   getInvoiceTool,
@@ -9,7 +8,7 @@ import { COMMON_AGENT_RULES, createAgent, formatContextForLLM } from "./shared";
 
 export const invoicesAgent = createAgent({
   name: "invoices",
-  model: openai("gpt-4o-mini"),
+  tier: "fast",
   temperature: 0.3,
   instructions: (
     ctx,

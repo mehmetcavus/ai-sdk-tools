@@ -4,7 +4,6 @@
  * Analytics & forecasting specialist with business intelligence tools
  */
 
-import { openai } from "@ai-sdk/openai";
 import {
   businessHealthScoreTool,
   cashFlowForecastTool,
@@ -14,7 +13,7 @@ import { COMMON_AGENT_RULES, createAgent, formatContextForLLM } from "./shared";
 
 export const analyticsAgent = createAgent({
   name: "analytics",
-  model: openai("gpt-4o"),
+  tier: "smart",
   temperature: 0.5,
   instructions: (
     ctx,

@@ -6,11 +6,11 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { openai } from "@ai-sdk/openai";
 import { Agent } from "@ai-sdk-tools/agents";
 import { UpstashProvider } from "@ai-sdk-tools/memory/upstash";
 import { Redis } from "@upstash/redis";
 import type { LanguageModel, Tool } from "ai";
+import { model, type ModelTier } from "../models";
 
 /**
  * Format agent capabilities for triage routing
@@ -66,7 +66,8 @@ export interface AppContext {
  */
 interface AgentConfig<TContext extends Record<string, unknown>> {
   name: string;
-  model: LanguageModel;
+  tier?: ModelTier;
+  model?: LanguageModel;
   instructions: string | ((context: TContext) => string);
   tools?: Record<string, Tool> | ((context: TContext) => Record<string, Tool>);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,6 +172,7 @@ export const createAgent = (config: AgentConfig<AppContext>) => {
       parallel_tool_calls: true,
     },
     ...config,
+    model: config.model ?? model(config.tier ?? "fast"),
     memory: {
       provider: memoryProvider,
       history: {
@@ -185,7 +187,7 @@ export const createAgent = (config: AgentConfig<AppContext>) => {
       chats: {
         enabled: true,
         generateTitle: {
-          model: openai("gpt-4.1-nano"),
+          model: model("nano"),
           instructions: `Generate a concise title that captures the user's intent.
 
 <rules>
@@ -207,7 +209,7 @@ Return only the title.
         },
         generateSuggestions: {
           enabled: true,
-          model: openai("gpt-4.1-nano"),
+          model: model("nano"),
           limit: 5,
           instructions: suggestionsInstructions,
         },

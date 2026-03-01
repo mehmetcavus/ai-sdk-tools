@@ -1,4 +1,3 @@
-import { openai } from "@ai-sdk/openai";
 import {
   getTransactionTool,
   listTransactionsTool,
@@ -7,7 +6,7 @@ import { COMMON_AGENT_RULES, createAgent, formatContextForLLM } from "./shared";
 
 export const transactionsAgent = createAgent({
   name: "transactions",
-  model: openai("gpt-4o-mini"),
+  tier: "fast",
   temperature: 0.3,
   instructions: (
     ctx,

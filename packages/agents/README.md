@@ -68,6 +68,37 @@ Automatic routing between agents based on:
 
 ## Enhanced Features (v0.3.0+)
 
+### Model Registry
+
+Decouple agents from specific providers and model strings. The model registry lets you define semantic tiers (`reasoning`, `smart`, `fast`, `nano`) and switch providers with a single env var — no agent code changes needed.
+
+```typescript
+import { createModelRegistry } from '@ai-sdk-tools/agents';
+import { openai } from '@ai-sdk/openai';
+import { anthropic } from '@ai-sdk/anthropic';
+
+const { model } = createModelRegistry({
+  tiers: ['reasoning', 'smart', 'fast', 'nano'] as const,
+  defaultProvider: 'openai',
+  providers: { openai, anthropic },
+  profiles: {
+    openai: { reasoning: 'o3-mini', smart: 'gpt-4o', fast: 'gpt-4o-mini', nano: 'gpt-4.1-nano' },
+    anthropic: { reasoning: 'claude-sonnet-4-20250514', smart: 'claude-sonnet-4-20250514', fast: 'claude-haiku-3-5-20241022', nano: 'claude-haiku-3-5-20241022' },
+  },
+});
+
+// Agents declare intent, not implementation
+const agent = new Agent({
+  name: 'analyst',
+  model: model('smart'),  // resolved from registry
+  instructions: '...',
+});
+```
+
+Switch all agents to Anthropic: `MODEL_PROVIDER=anthropic`. Override a single tier: `MODEL_SMART=anthropic:claude-sonnet-4-20250514`.
+
+See the full [Model Registry Design](./MODEL_REGISTRY_DESIGN.md) for architecture details, env var reference, error handling, and migration guide.
+
 ### Context Management & Handoff Filtering
 
 The package now includes OpenAI-style context management with `AgentRunContext` and `HandoffInputFilter` support:

@@ -1,4 +1,3 @@
-import { openai } from "@ai-sdk/openai";
 import {
   createCustomerTool,
   customerProfitabilityTool,
@@ -10,7 +9,7 @@ import { COMMON_AGENT_RULES, createAgent, formatContextForLLM } from "./shared";
 
 export const customersAgent = createAgent({
   name: "customers",
-  model: openai("gpt-4o-mini"),
+  tier: "fast",
   temperature: 0.3,
   instructions: (
     ctx,

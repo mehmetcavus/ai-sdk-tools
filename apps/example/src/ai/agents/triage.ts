@@ -1,4 +1,3 @@
-import { openai } from "@ai-sdk/openai";
 import { analyticsAgent } from "./analytics";
 import { customersAgent } from "./customers";
 import { generalAgent } from "./general";
@@ -12,7 +11,7 @@ import { transactionsAgent } from "./transactions";
 
 export const triageAgent = createAgent({
   name: "triage",
-  model: openai("gpt-4o-mini"),
+  tier: "fast",
   temperature: 0.1,
   modelSettings: {
     toolChoice: {

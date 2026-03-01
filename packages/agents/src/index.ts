@@ -65,5 +65,11 @@ export type {
   ToolPermissionResult,
   ToolPermissions,
 } from "./types.js";
+// Model registry
+export { createModelRegistry } from "./model-registry.js";
+export type {
+  ModelRegistry,
+  ModelRegistryConfig,
+} from "./model-registry.js";
 // Utilities
 export { extractTextFromMessage } from "./utils.js";

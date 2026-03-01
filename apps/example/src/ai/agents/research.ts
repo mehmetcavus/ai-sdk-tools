@@ -1,4 +1,3 @@
-import { openai } from "@ai-sdk/openai";
 import {
   businessHealthScoreTool,
   cashFlowForecastTool,
@@ -18,7 +17,7 @@ import {
  */
 export const researchAgent = createAgent({
   name: "research",
-  model: openai("gpt-4o"),
+  tier: "smart",
   temperature: 0.7,
   instructions: (
     ctx: AppContext,

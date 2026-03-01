@@ -21,6 +21,19 @@ UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your-token-here
 ```
 
+**Model Provider Configuration:**
+
+This app uses the [Model Registry](../../packages/agents/MODEL_REGISTRY_DESIGN.md) from `@ai-sdk-tools/agents` to decouple agents from specific providers. Switch all agents to a different provider with a single env var:
+
+```env
+# Optional - Model Provider (default: openai)
+MODEL_PROVIDER=anthropic
+
+# Optional - Per-tier overrides (format: provider:model-id)
+# MODEL_SMART=anthropic:claude-sonnet-4-20250514
+# MODEL_REASONING=openai:o3-mini
+```
+
 **Memory Storage Options:**
 
 | Provider | When to Use | Setup Required |

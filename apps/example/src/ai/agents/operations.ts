@@ -1,4 +1,3 @@
-import { openai } from "@ai-sdk/openai";
 import { listInvoicesTool } from "../tools/invoices";
 import {
   exportDataTool,
@@ -11,7 +10,7 @@ import { COMMON_AGENT_RULES, createAgent, formatContextForLLM } from "./shared";
 
 export const operationsAgent = createAgent({
   name: "operations",
-  model: openai("gpt-4o-mini"),
+  tier: "fast",
   temperature: 0.3,
   instructions: (
     ctx,

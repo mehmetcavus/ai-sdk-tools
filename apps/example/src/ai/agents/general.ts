@@ -1,4 +1,3 @@
-import { openai } from "@ai-sdk/openai";
 import { webSearchTool } from "../tools/search";
 import { analyticsAgent } from "./analytics";
 import { customersAgent } from "./customers";
@@ -11,7 +10,7 @@ import { transactionsAgent } from "./transactions";
 
 export const generalAgent = createAgent({
   name: "general",
-  model: openai("gpt-4o"),
+  tier: "smart",
   temperature: 0.8,
   instructions: (
     ctx,

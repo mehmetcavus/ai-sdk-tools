@@ -1,4 +1,3 @@
-import { openai } from "@ai-sdk/openai";
 import {
   createTimeEntryTool,
   deleteTimeEntryTool,
@@ -12,7 +11,7 @@ import { COMMON_AGENT_RULES, createAgent, formatContextForLLM } from "./shared";
 
 export const timeTrackingAgent = createAgent({
   name: "timeTracking",
-  model: openai("gpt-4o-mini"),
+  tier: "fast",
   temperature: 0.3,
   instructions: (
     ctx,
