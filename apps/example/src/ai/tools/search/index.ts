@@ -30,7 +30,7 @@ const provider = resolveWebSearchProvider();
 
 export const webSearchTool = withModelInfo(
   implementations[provider](),
-  { model: modelFor("fast", provider), provider },
+  { model: modelFor("fast", provider), provider, tier: "fast" },
 );
 
 console.info(`[web-search] Using ${provider} web search`);

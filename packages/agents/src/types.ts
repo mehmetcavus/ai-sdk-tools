@@ -370,9 +370,9 @@ export interface AgentDataParts {
     reset: string;
     code?: string;
   };
-  /** Tool model info — maps tool names to their model/provider (transient) */
+  /** Tool model info — maps tool names to their model/provider/tier (transient) */
   "tool-model-info": {
-    tools: Record<string, { model?: string; provider?: string }>;
+    tools: Record<string, { model?: string; provider?: string; tier?: string }>;
   };
   /** Suggested prompts (transient) */
   suggestions: {

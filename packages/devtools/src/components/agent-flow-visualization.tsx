@@ -106,10 +106,11 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
       endTime?: number;
       model?: string;
       provider?: string;
+      tier?: string;
     }
   >();
   const toolCallIdToName = new Map<string, string>();
-  const toolModelInfoMap = new Map<string, { model?: string; provider?: string }>();
+  const toolModelInfoMap = new Map<string, { model?: string; provider?: string; tier?: string }>();
   let totalRounds = 0;
   let isActive = false;
   let currentAgent: string | undefined;
@@ -217,7 +218,7 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
         const tools = event.data?.tools;
         if (tools && typeof tools === "object") {
           for (const [name, info] of Object.entries(tools)) {
-            toolModelInfoMap.set(name, info as { model?: string; provider?: string });
+            toolModelInfoMap.set(name, info as { model?: string; provider?: string; tier?: string });
           }
         }
         break;
@@ -252,6 +253,7 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
             endTime: existing?.endTime,
             model: existing?.model || declaredInfo?.model,
             provider: existing?.provider || declaredInfo?.provider,
+            tier: existing?.tier || declaredInfo?.tier,
           });
 
           // Also increment agent's tool call count

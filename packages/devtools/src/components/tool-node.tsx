@@ -12,12 +12,13 @@ interface ToolNodeData {
   callCount?: number;
   model?: string;
   provider?: string;
+  tier?: string;
   showModelInfo?: boolean;
 }
 
 function ToolNodeComponent({ data }: NodeProps) {
   const nodeData = data as unknown as ToolNodeData;
-  const { name, description, duration, callCount, model, provider, showModelInfo } = nodeData;
+  const { name, description, duration, callCount, model, provider, tier, showModelInfo } = nodeData;
   const hasModelInfo = showModelInfo && (model || provider);
 
   return (
@@ -114,6 +115,12 @@ function ToolNodeComponent({ data }: NodeProps) {
             {provider && model && <span style={{ color: "#3f3f46" }}>/</span>}
             {model && (
               <span style={{ color: "#8b8b8b" }}>{model}</span>
+            )}
+            {tier && (
+              <>
+                <span style={{ color: "#3f3f46" }}>/</span>
+                <span style={{ color: "#22d3ee" }}>{tier}</span>
+              </>
             )}
           </div>
         )}

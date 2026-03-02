@@ -3,6 +3,7 @@ import type { LanguageModel, Tool } from "ai";
 export interface ToolModelInfo {
 	model?: string;
 	provider?: string;
+	tier?: string;
 }
 
 const MODEL_INFO_KEY = "_modelInfo";
@@ -25,13 +26,13 @@ const MODEL_INFO_KEY = "_modelInfo";
  */
 export function withModelInfo(
 	t: Tool,
-	info: { model: LanguageModel | string; provider: string },
+	info: { model: LanguageModel | string; provider: string; tier?: string },
 ): Tool {
 	const modelId =
 		typeof info.model === "string" ? info.model : info.model.modelId;
 
 	return Object.assign(t, {
-		[MODEL_INFO_KEY]: { model: modelId, provider: info.provider },
+		[MODEL_INFO_KEY]: { model: modelId, provider: info.provider, tier: info.tier },
 	});
 }
 

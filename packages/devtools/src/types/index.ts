@@ -180,6 +180,7 @@ export interface ToolNode {
   duration?: number;
   model?: string;
   provider?: string;
+  tier?: string;
 }
 
 export interface AgentFlowData {
