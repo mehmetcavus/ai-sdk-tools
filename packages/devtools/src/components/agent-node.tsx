@@ -12,6 +12,7 @@ import type { AgentNode as AgentNodeData } from "../types";
 
 interface AgentNodeComponentData extends AgentNodeData {
   label: string;
+  showModelInfo?: boolean;
 }
 
 function AgentNodeComponent({ data }: NodeProps) {
@@ -25,7 +26,12 @@ function AgentNodeComponent({ data }: NodeProps) {
     // routingStrategy,
     // matchScore,
     // round,
+    model,
+    provider,
+    tier,
+    showModelInfo,
   } = nodeData;
+  const hasModelInfo = showModelInfo && (model || provider || tier);
 
   // Status icon and color
   const getStatusIcon = () => {
@@ -125,12 +131,45 @@ function AgentNodeComponent({ data }: NodeProps) {
           style={{
             fontSize: 13,
             color: "#a1a1aa",
-            marginBottom: duration !== undefined ? 12 : 0,
+            marginBottom: hasModelInfo || duration !== undefined ? 12 : 0,
             fontFamily: "monospace",
           }}
         >
           {name.toLowerCase().replace(/\s+/g, "-")}
         </div>
+
+        {/* Model info */}
+        {hasModelInfo && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 11,
+              fontFamily: "monospace",
+              color: "#71717a",
+              marginBottom: duration !== undefined ? 0 : -4,
+            }}
+          >
+            {provider && <span style={{ color: "#a78bfa" }}>{provider}</span>}
+            {provider && model && <span style={{ color: "#3f3f46" }}>/</span>}
+            {model && <span style={{ color: "#8b8b8b" }}>{model}</span>}
+            {tier && (
+              <span
+                style={{
+                  marginLeft: "auto",
+                  padding: "1px 5px",
+                  background: "#27272a",
+                  borderRadius: 2,
+                  fontSize: 10,
+                  color: "#a1a1aa",
+                }}
+              >
+                {tier}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Duration */}
         {duration !== undefined && (

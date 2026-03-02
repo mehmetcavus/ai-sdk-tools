@@ -71,5 +71,8 @@ export type {
   ModelRegistry,
   ModelRegistryConfig,
 } from "./model-registry.js";
+// Tool metadata
+export { withModelInfo, getToolModelInfo, extractToolModelInfo } from "./tool-metadata.js";
+export type { ToolModelInfo } from "./tool-metadata.js";
 // Utilities
 export { extractTextFromMessage } from "./utils.js";

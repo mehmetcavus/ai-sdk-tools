@@ -374,6 +374,22 @@ export function parseEventFromDataPart(
       data: agentData,
       metadata: {
         agent: agentData.agent,
+        model: agentData.model,
+        provider: agentData.provider,
+        tier: agentData.tier,
+        originalType: dataPart.type,
+      },
+    };
+  }
+
+  // Handle tool model info events
+  if (dataPart.type === "data-tool-model-info") {
+    return {
+      id: eventId,
+      timestamp,
+      type: "tool-model-info",
+      data: dataPart.data || {},
+      metadata: {
         originalType: dataPart.type,
       },
     };

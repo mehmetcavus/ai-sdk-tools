@@ -2,7 +2,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { createModelRegistry } from "@ai-sdk-tools/agents";
 
-export const { model, modelFor } = createModelRegistry({
+export const { model, modelFor, activeProvider } = createModelRegistry({
   tiers: ["reasoning", "smart", "fast", "nano"] as const,
   defaultProvider: "openai",
   providers: { openai, anthropic },

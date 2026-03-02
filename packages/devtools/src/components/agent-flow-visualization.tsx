@@ -11,7 +11,7 @@ import {
   useNodesState,
 } from "@xyflow/react";
 import dagre from "dagre";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "@xyflow/react/dist/style.css";
 import type { AgentFlowData, AIEvent } from "../types";
 import { AgentNode } from "./agent-node";
@@ -83,6 +83,8 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
       matchScore?: number;
       round?: number;
       model?: string;
+      provider?: string;
+      tier?: string;
     }
   >();
   const handoffs: Array<{
@@ -100,8 +102,14 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
       agent?: string;
       description?: string;
       callCount: number;
+      startTime?: number;
+      endTime?: number;
+      model?: string;
+      provider?: string;
     }
   >();
+  const toolCallIdToName = new Map<string, string>();
+  const toolModelInfoMap = new Map<string, { model?: string; provider?: string }>();
   let totalRounds = 0;
   let isActive = false;
   let currentAgent: string | undefined;
@@ -116,7 +124,6 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
           agentMap.set(agentName, {
             name: agentName,
             status: "executing",
-            // Preserve original startTime if it exists (don't overwrite on subsequent starts)
             startTime: existing?.startTime || event.timestamp,
             endTime: existing?.endTime,
             toolCallCount: existing?.toolCallCount || 0,
@@ -124,6 +131,8 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
             matchScore: event.metadata?.matchScore,
             round: event.metadata?.round,
             model: event.metadata?.model || existing?.model,
+            provider: event.metadata?.provider || existing?.provider,
+            tier: event.metadata?.tier || existing?.tier,
           });
           isActive = true;
         }
@@ -140,6 +149,8 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
               status: "completed",
               endTime: event.timestamp,
               model: event.metadata?.model || agent.model,
+              provider: event.metadata?.provider || agent.provider,
+              tier: event.metadata?.tier || agent.tier,
             });
           }
         }
@@ -202,9 +213,20 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
         break;
       }
 
+      case "tool-model-info": {
+        const tools = event.data?.tools;
+        if (tools && typeof tools === "object") {
+          for (const [name, info] of Object.entries(tools)) {
+            toolModelInfoMap.set(name, info as { model?: string; provider?: string });
+          }
+        }
+        break;
+      }
+
       case "tool-call-start": {
         // Track tool calls and create tool nodes
         const toolName = event.metadata?.toolName || event.data?.toolName;
+        const toolCallId = event.metadata?.toolCallId || event.data?.toolCallId;
         const agentName = currentAgent || event.metadata?.agent;
 
         // Filter out internal orchestration tools from visualization
@@ -217,12 +239,19 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
           toolName.trim() !== "" &&
           !isInternalTool
         ) {
+          if (toolCallId) toolCallIdToName.set(toolCallId, toolName);
+
+          const declaredInfo = toolModelInfoMap.get(toolName);
           const existing = toolMap.get(toolName);
           toolMap.set(toolName, {
             name: toolName,
             agent: agentName,
             description: event.metadata?.description || `${toolName} tool`,
             callCount: (existing?.callCount || 0) + 1,
+            startTime: existing?.startTime ?? event.timestamp,
+            endTime: existing?.endTime,
+            model: existing?.model || declaredInfo?.model,
+            provider: existing?.provider || declaredInfo?.provider,
           });
 
           // Also increment agent's tool call count
@@ -239,19 +268,38 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
         break;
       }
 
+      case "tool-call-result": {
+        const toolCallId = event.metadata?.toolCallId || event.data?.toolCallId;
+        const directName = event.metadata?.toolName || event.data?.toolName;
+        const toolName =
+          (directName && toolMap.has(directName) ? directName : null) ||
+          (toolCallId ? toolCallIdToName.get(toolCallId) : null);
+
+        if (toolName && toolMap.has(toolName)) {
+          const tool = toolMap.get(toolName)!;
+          toolMap.set(toolName, {
+            ...tool,
+            endTime: event.timestamp,
+          });
+        }
+        break;
+      }
+
       case "finish": {
-        // Try to extract model from response metadata
         if (currentAgent && agentMap.has(currentAgent)) {
           const agent = agentMap.get(currentAgent);
-          const responseModel =
-            event.data?.response?.model || event.data?.model;
-          if (agent && responseModel) {
+          if (agent) {
+            const responseModel =
+              event.data?.response?.model || event.data?.model;
             agentMap.set(currentAgent, {
               ...agent,
-              model: responseModel,
+              status: agent.status === "executing" ? "completed" : agent.status,
+              endTime: agent.endTime ?? event.timestamp,
+              ...(responseModel ? { model: responseModel } : {}),
             });
           }
         }
+        isActive = false;
         break;
       }
     }
@@ -269,6 +317,10 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
   const tools = Array.from(toolMap.entries()).map(([id, data]) => ({
     id,
     ...data,
+    duration:
+      data.startTime && data.endTime
+        ? (data.endTime - data.startTime) / 1000
+        : undefined,
   }));
 
   const firstEvent = events.find(
@@ -296,6 +348,7 @@ function processAgentEvents(events: AIEvent[]): AgentFlowData {
 export function AgentFlowVisualization({
   events,
 }: AgentFlowVisualizationProps) {
+  const [showModelInfo, setShowModelInfo] = useState(true);
   const agentFlowData = useMemo(() => processAgentEvents(events), [events]);
 
   // Convert agent flow data to ReactFlow nodes and edges
@@ -307,6 +360,7 @@ export function AgentFlowVisualization({
       data: {
         ...node,
         label: node.name,
+        showModelInfo,
       },
     }));
 
@@ -323,12 +377,13 @@ export function AgentFlowVisualization({
           ...tool,
           label: tool.name,
           description: `A ${tool.name} tool`,
+          showModelInfo,
         },
       };
     });
 
     return [...agentNodes, ...toolNodes];
-  }, [agentFlowData.nodes, agentFlowData.tools]);
+  }, [agentFlowData.nodes, agentFlowData.tools, showModelInfo]);
 
   const initialEdges: Edge[] = useMemo(() => {
     // Agent handoff edges
@@ -476,6 +531,23 @@ export function AgentFlowVisualization({
           color: "#cccccc"
         }}>
           <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() => setShowModelInfo((v) => !v)}
+              style={{
+                background: showModelInfo ? "#27272a" : "transparent",
+                border: `1px solid ${showModelInfo ? "#a78bfa" : "#3f3f46"}`,
+                borderRadius: 3,
+                padding: "1px 8px",
+                fontSize: 10,
+                color: showModelInfo ? "#a78bfa" : "#71717a",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                lineHeight: "16px",
+              }}
+            >
+              Models
+            </button>
             <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
               <span style={{ fontWeight: 600, color: "#ffffff" }}>{agentFlowData.nodes.length}</span>
               <span style={{ color: "#666666" }}>Agents</span>

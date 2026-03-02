@@ -28,7 +28,8 @@ export type AIEventType =
   | "agent-finish"
   | "agent-handoff"
   | "agent-complete"
-  | "agent-error";
+  | "agent-error"
+  | "tool-model-info";
 
 // Base event structure that wraps AI SDK stream parts
 export interface AIEvent {
@@ -155,6 +156,8 @@ export interface AgentNode {
   matchScore?: number;
   round?: number;
   model?: string;
+  provider?: string;
+  tier?: string;
 }
 
 export interface AgentHandoff {
@@ -172,6 +175,11 @@ export interface ToolNode {
   agent?: string;
   description?: string;
   callCount: number;
+  startTime?: number;
+  endTime?: number;
+  duration?: number;
+  model?: string;
+  provider?: string;
 }
 
 export interface AgentFlowData {

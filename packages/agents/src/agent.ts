@@ -31,7 +31,8 @@ import {
 } from "./handoff.js";
 import { promptWithHandoffInstructions } from "./handoff-prompt.js";
 import { AgentRunContext } from "./run-context.js";
-import { writeAgentStatus, writeSuggestions } from "./streaming.js";
+import { writeAgentStatus, writeSuggestions, writeToolModelInfo } from "./streaming.js";
+import { extractToolModelInfo } from "./tool-metadata.js";
 import { createDefaultInputFilter } from "./tool-result-extractor.js";
 import type {
   AgentConfig,
@@ -55,6 +56,12 @@ import { extractTextFromMessage, stripMetadata } from "./utils.js";
 
 const logger = createLogger("AGENT");
 
+function getModelInfo(agent: unknown): Pick<import("./types.js").AgentDataParts["agent-status"], "model" | "provider" | "tier"> {
+  const info = (agent as { modelInfo?: { model?: string; provider?: string; tier?: string } }).modelInfo;
+  if (!info) return {};
+  return { model: info.model, provider: info.provider, tier: info.tier };
+}
+
 export class Agent<
   TContext extends Record<string, unknown> = Record<string, unknown>,
 > implements IAgent<TContext>
@@ -77,6 +84,7 @@ export class Agent<
     | Record<string, Tool>
     | ((context: TContext) => Record<string, Tool>);
   private readonly modelSettings?: Record<string, unknown>;
+  public readonly modelInfo?: { model?: string; provider?: string; tier?: string };
   private readonly maxTurns: number;
   // Cache for system prompt construction
   private _cachedSystemPrompt?: string;
@@ -95,6 +103,7 @@ export class Agent<
     this.model = config.model;
     this.handoffAgents = config.handoffs || [];
     this.modelSettings = config.modelSettings;
+    this.modelInfo = config.modelInfo;
     this.maxTurns = config.maxTurns || 10;
 
     // Store tools config (will be resolved at runtime)
@@ -336,6 +345,11 @@ export class Agent<
     throw new Error("No valid options provided to stream method");
   }
 
+  getToolModelInfo(): Record<string, import("./tool-metadata.js").ToolModelInfo> {
+    if (typeof this.configuredTools === "function") return {};
+    return extractToolModelInfo(this.configuredTools);
+  }
+
   getHandoffs(): Array<IAgent<any>> {
     return this.handoffAgents.map((h) => ("agent" in h ? h.agent : h));
   }
@@ -509,7 +523,19 @@ export class Agent<
           writeAgentStatus(writer, {
             status: "routing",
             agent: this.name,
+            ...getModelInfo(this),
           });
+
+          // Emit tool model info by scanning tools from all agents
+          const allToolModelInfo: Record<string, { model?: string; provider?: string }> = {
+            ...this.getToolModelInfo(),
+          };
+          for (const specialist of specialists) {
+            if ("getToolModelInfo" in specialist && typeof specialist.getToolModelInfo === "function") {
+              Object.assign(allToolModelInfo, specialist.getToolModelInfo());
+            }
+          }
+          writeToolModelInfo(writer, allToolModelInfo);
 
           if (onEvent) {
             await onEvent({
@@ -537,6 +563,7 @@ export class Agent<
               writeAgentStatus(writer, {
                 status: "completing",
                 agent: this.name,
+                ...getModelInfo(this),
               });
 
               if (onEvent) {
@@ -589,6 +616,7 @@ export class Agent<
               writeAgentStatus(writer, {
                 status: "completing",
                 agent: this.name,
+                ...getModelInfo(this),
               });
 
               if (onEvent) {
@@ -652,6 +680,7 @@ export class Agent<
               writeAgentStatus(writer, {
                 status: "completing",
                 agent: this.name,
+                ...getModelInfo(this),
               });
 
               if (onEvent) {
@@ -698,6 +727,7 @@ export class Agent<
             writeAgentStatus(writer, {
               status: "executing",
               agent: currentAgent.name,
+              ...getModelInfo(currentAgent),
             });
 
             // Get context window size from agent config, with sensible defaults
@@ -897,6 +927,7 @@ export class Agent<
                 writeAgentStatus(writer, {
                   status: "routing",
                   agent: this.name,
+                  ...getModelInfo(this),
                 });
 
                 // Mark specialist as used and route to it

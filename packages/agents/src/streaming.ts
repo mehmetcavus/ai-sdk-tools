@@ -91,6 +91,21 @@ export function writeRateLimit(
 }
 
 /**
+ * Write transient tool model info.
+ *
+ * Tells devtools which tools use their own model/provider,
+ * so the visualization can show accurate per-tool model info.
+ */
+export function writeToolModelInfo(
+  writer: UIMessageStreamWriter,
+  tools: AgentDataParts["tool-model-info"]["tools"],
+): void {
+  if (Object.keys(tools).length > 0) {
+    writeDataPart(writer, "data-tool-model-info", { tools }, { transient: true });
+  }
+}
+
+/**
  * Write transient suggested prompts.
  *
  * Suggested prompts are ephemeral and won't be added to message history.

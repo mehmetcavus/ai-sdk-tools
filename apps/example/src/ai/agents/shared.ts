@@ -10,7 +10,7 @@ import { Agent } from "@ai-sdk-tools/agents";
 import { UpstashProvider } from "@ai-sdk-tools/memory/upstash";
 import { Redis } from "@upstash/redis";
 import type { LanguageModel, Tool } from "ai";
-import { model, type ModelTier } from "../models";
+import { activeProvider, model, type ModelTier } from "../models";
 
 /**
  * Format agent capabilities for triage routing
@@ -167,12 +167,21 @@ export const memoryProvider = new UpstashProvider(
 );
 
 export const createAgent = (config: AgentConfig<AppContext>) => {
+  const resolvedTier = config.tier ?? "fast";
+  const resolvedModel = config.model ?? model(resolvedTier);
   return new Agent({
     modelSettings: {
       parallel_tool_calls: true,
     },
     ...config,
-    model: config.model ?? model(config.tier ?? "fast"),
+    model: resolvedModel,
+    modelInfo: config.model
+      ? undefined
+      : {
+          model: typeof resolvedModel === "string" ? resolvedModel : resolvedModel.modelId,
+          provider: activeProvider,
+          tier: resolvedTier,
+        },
     memory: {
       provider: memoryProvider,
       history: {

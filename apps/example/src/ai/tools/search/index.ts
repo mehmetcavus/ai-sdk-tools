@@ -1,3 +1,5 @@
+import { withModelInfo } from "@ai-sdk-tools/agents";
+import { modelFor } from "@/ai/models";
 import { createOpenAIWebSearch } from "./openai-web-search";
 // import { createAnthropicWebSearch } from "./anthropic-web-search";
 import type { WebSearchFactory } from "./types";
@@ -25,6 +27,10 @@ function resolveWebSearchProvider(): string {
 }
 
 const provider = resolveWebSearchProvider();
-export const webSearchTool = implementations[provider]();
+
+export const webSearchTool = withModelInfo(
+  implementations[provider](),
+  { model: modelFor("fast", provider), provider },
+);
 
 console.info(`[web-search] Using ${provider} web search`);

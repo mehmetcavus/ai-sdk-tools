@@ -101,6 +101,8 @@ export interface AgentConfig<
   temperature?: number;
   /** Additional model settings */
   modelSettings?: Record<string, unknown>;
+  /** Model metadata (provider, tier) for devtools visualization */
+  modelInfo?: { model?: string; provider?: string; tier?: string };
   /** Programmatic routing patterns */
   matchOn?: (string | RegExp)[] | ((message: string) => boolean);
   /** Lifecycle event handler */
@@ -350,6 +352,9 @@ export interface AgentDataParts {
   "agent-status": {
     status: "routing" | "executing" | "completing";
     agent: string;
+    model?: string;
+    provider?: string;
+    tier?: string;
   };
   /** Agent handoff events (transient) */
   "agent-handoff": {
@@ -364,6 +369,10 @@ export interface AgentDataParts {
     remaining: number;
     reset: string;
     code?: string;
+  };
+  /** Tool model info — maps tool names to their model/provider (transient) */
+  "tool-model-info": {
+    tools: Record<string, { model?: string; provider?: string }>;
   };
   /** Suggested prompts (transient) */
   suggestions: {
