@@ -64,6 +64,14 @@ Multi-agent orchestration with automatic handoffs and routing. Build intelligent
 npm i @ai-sdk-tools/agents ai zod
 ```
 
+### [@ai-sdk-tools/ocr](./packages/ocr)
+
+Extract structured data from invoices and receipts using AI vision models. Supports Anthropic, Mistral, and Gemini with configurable provider cascade, quality validation, and automatic result merging.
+
+```bash
+npm i @ai-sdk-tools/ocr
+```
+
 ### [@ai-sdk-tools/cache](./packages/cache)
 
 Universal caching for AI SDK tools. Cache expensive operations with zero configuration - works with regular tools, streaming, and artifacts.

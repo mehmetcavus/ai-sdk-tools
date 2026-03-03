@@ -1,5 +1,7 @@
 export type DocumentType = "invoice" | "receipt";
 
+export type OCRProviderName = "mistral" | "gemini" | "anthropic" | "ocr-fallback";
+
 export interface MistralConfig {
   model?: string;
   apiKey?: string;
@@ -10,13 +12,21 @@ export interface GeminiConfig {
   apiKey?: string;
 }
 
+export interface AnthropicConfig {
+  model?: string;
+  apiKey?: string;
+}
+
 export interface ProviderConfig {
   mistral?: MistralConfig;
   gemini?: GeminiConfig;
+  anthropic?: AnthropicConfig;
 }
 
 export interface OCROptions {
   providers?: ProviderConfig;
+  /** Provider execution order. Defaults to ["mistral", "gemini", "ocr-fallback"]. */
+  providerOrder?: OCRProviderName[];
   timeout?: number;
   retries?: number;
   qualityThreshold?: QualityThreshold;
@@ -30,7 +40,7 @@ export interface QualityThreshold {
 }
 
 export interface ProviderAttempt {
-  provider: "mistral" | "gemini" | "ocr-fallback";
+  provider: OCRProviderName;
   success: boolean;
   error?: Error;
   result?: unknown;

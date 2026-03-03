@@ -6,11 +6,13 @@ export { invoiceSchema, receiptSchema } from "./schemas.js";
 
 // Types
 export type {
+  AnthropicConfig,
   DocumentType,
   GeminiConfig,
   MistralConfig,
   OCRInput,
   OCROptions,
+  OCRProviderName,
   ProviderConfig,
   QualityThreshold,
 } from "./types.js";

@@ -1,15 +1,18 @@
 import type { z } from "zod";
 import { mergeResults } from "./merge.js";
+import { extractWithAnthropic } from "./providers/anthropic.js";
 import { extractWithGemini } from "./providers/gemini.js";
 import { extractWithMistral } from "./providers/mistral.js";
 import { extractWithOCRFallback } from "./providers/ocr-fallback.js";
+import type { ProviderResult } from "./providers/types.js";
 import { validateQuality } from "./quality.js";
 import { invoiceSchema, receiptSchema } from "./schemas.js";
-import type { OCRInput, OCROptions, ProviderAttempt } from "./types.js";
+import type { OCRInput, OCROptions, OCRProviderName, ProviderAttempt } from "./types.js";
 import { OCRError } from "./types.js";
 import { normalizeInput } from "./utils.js";
 
-// Default prompts for invoice and receipt extraction
+const DEFAULT_ORDER: OCRProviderName[] = ["mistral", "gemini", "ocr-fallback"];
+
 const INVOICE_PROMPT = `Extract structured data from this invoice document. Extract all relevant fields including vendor information, dates, amounts, line items, tax information, and payment details. Be accurate and complete.`;
 
 const RECEIPT_PROMPT = `Extract structured data from this receipt document. Extract all relevant fields including vendor/merchant name, date, total amount, items purchased, payment method, and transaction details. Be accurate and complete.`;
@@ -26,12 +29,39 @@ function getSchemaAndPrompt(
     }
   }
 
-  // Custom schema - use generic prompt
   return {
     schema: typeOrSchema,
     prompt:
       "Extract structured data from this document according to the provided schema. Be accurate and complete.",
   };
+}
+
+async function runProvider<T>(
+  name: OCRProviderName,
+  extractOptions: {
+    schema: z.ZodSchema<T>;
+    input: { data: string; mediaType: string };
+    prompt: string;
+    timeout?: number;
+    retries?: number;
+  },
+  options: OCROptions,
+): Promise<ProviderResult<T> | null> {
+  switch (name) {
+    case "mistral":
+      return extractWithMistral(extractOptions, options.providers?.mistral);
+    case "gemini":
+      return extractWithGemini(extractOptions, options.providers?.gemini);
+    case "anthropic":
+      return extractWithAnthropic(extractOptions, options.providers?.anthropic);
+    case "ocr-fallback":
+      if (extractOptions.input.mediaType === "application/pdf") {
+        return extractWithOCRFallback(extractOptions, options.providers?.mistral);
+      }
+      return null;
+    default:
+      return null;
+  }
 }
 
 export async function ocr<T extends Record<string, unknown>>(
@@ -51,150 +81,65 @@ export async function ocr<T extends Record<string, unknown>>(
     retries: options.retries ?? 3,
   };
 
-  // Primary attempt: Mistral
-  let primaryResult: T | undefined;
-  let primaryError: Error | undefined;
+  const providerOrder = options.providerOrder ?? DEFAULT_ORDER;
+  const results: Array<{ provider: OCRProviderName; data: T }> = [];
 
-  try {
-    const mistralResult = await extractWithMistral(
-      extractOptions,
-      options.providers?.mistral,
-    );
-
-    attempts.push({
-      provider: "mistral",
-      success: mistralResult.success,
-      error: mistralResult.error,
-      result: mistralResult.result,
-      duration: mistralResult.duration,
-    });
-
-    if (mistralResult.success && mistralResult.result) {
-      primaryResult = mistralResult.result as T;
-
-      // Check quality
-      const isQualityGood = validateQuality(
-        primaryResult,
-        schema,
-        options.qualityThreshold,
-      );
-
-      if (isQualityGood) {
-        return primaryResult;
-      }
-
-      // Quality is poor, but we have a result - continue to fallback and merge
-    } else {
-      primaryError = mistralResult.error;
-    }
-  } catch (error) {
-    primaryError = error instanceof Error ? error : new Error(String(error));
-    attempts.push({
-      provider: "mistral",
-      success: false,
-      error: primaryError,
-    });
-  }
-
-  // Secondary attempt: Gemini
-  let fallbackResult: T | undefined;
-  let fallbackError: Error | undefined;
-
-  try {
-    const geminiResult = await extractWithGemini(
-      extractOptions,
-      options.providers?.gemini,
-    );
-
-    attempts.push({
-      provider: "gemini",
-      success: geminiResult.success,
-      error: geminiResult.error,
-      result: geminiResult.result,
-      duration: geminiResult.duration,
-    });
-
-    if (geminiResult.success && geminiResult.result) {
-      fallbackResult = geminiResult.result as T;
-
-      // If we have primary result, merge them
-      if (primaryResult) {
-        return mergeResults(primaryResult, fallbackResult);
-      }
-
-      // Check quality of fallback
-      const isQualityGood = validateQuality(
-        fallbackResult,
-        schema,
-        options.qualityThreshold,
-      );
-
-      if (isQualityGood) {
-        return fallbackResult;
-      }
-
-      // Quality is poor, continue to OCR fallback
-    } else {
-      fallbackError = geminiResult.error;
-    }
-  } catch (error) {
-    fallbackError = error instanceof Error ? error : new Error(String(error));
-    attempts.push({
-      provider: "gemini",
-      success: false,
-      error: fallbackError,
-    });
-  }
-
-  // Tertiary attempt: OCR + LLM (only for PDFs)
-  if (normalizedInput.mediaType === "application/pdf") {
+  for (const providerName of providerOrder) {
     try {
-      const ocrResult = await extractWithOCRFallback(
-        extractOptions,
-        options.providers?.mistral,
-      );
+      const providerResult = await runProvider<T>(providerName, extractOptions, options);
+
+      if (!providerResult) continue;
 
       attempts.push({
-        provider: "ocr-fallback",
-        success: ocrResult.success,
-        error: ocrResult.error,
-        result: ocrResult.result,
-        duration: ocrResult.duration,
+        provider: providerName,
+        success: providerResult.success,
+        error: providerResult.error,
+        result: providerResult.result,
+        duration: providerResult.duration,
       });
 
-      if (ocrResult.success && ocrResult.result) {
-        const ocrData = ocrResult.result as T;
+      if (providerResult.success && providerResult.result) {
+        const data = providerResult.result as T;
 
-        // Merge with any existing results
-        if (primaryResult) {
-          return mergeResults(primaryResult, ocrData);
-        }
-        if (fallbackResult) {
-          return mergeResults(fallbackResult, ocrData);
+        const isQualityGood = validateQuality(
+          data,
+          schema,
+          options.qualityThreshold,
+        );
+
+        if (isQualityGood) {
+          // High quality — merge with any previous lower-quality result if available
+          if (results.length > 0) {
+            return mergeResults(results[0].data, data);
+          }
+          return data;
         }
 
-        return ocrData;
+        // Keep for potential merge with a later provider
+        results.push({ provider: providerName, data });
       }
     } catch (error) {
       attempts.push({
-        provider: "ocr-fallback",
+        provider: providerName,
         success: false,
         error: error instanceof Error ? error : new Error(String(error)),
       });
     }
   }
 
-  // If we have any result (even if quality is poor), return it
-  if (primaryResult) {
-    return primaryResult;
+  // If we collected multiple results, merge the best two
+  if (results.length >= 2) {
+    return mergeResults(results[0].data, results[1].data);
   }
-  if (fallbackResult) {
-    return fallbackResult;
+
+  // Return any result we have, even if quality is poor
+  if (results.length === 1) {
+    return results[0].data;
   }
 
   // All attempts failed
-  const finalError =
-    primaryError || fallbackError || new Error("All OCR providers failed");
+  const firstError = attempts.find((a) => a.error)?.error;
+  const finalError = firstError || new Error("All OCR providers failed");
 
   throw new OCRError(
     `Failed to extract data from document: ${finalError.message}`,

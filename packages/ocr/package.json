@@ -1,63 +1,13 @@
 {
   "name": "@ai-sdk-tools/ocr",
   "version": "2.0.0-beta.0",
-  "description": "Extract structured data from invoices and receipts using AI SDK with intelligent provider fallback",
-  "keywords": [
-    "ai",
-    "ai-sdk",
-    "ocr",
-    "invoice",
-    "receipt",
-    "document-extraction",
-    "mistral",
-    "gemini"
-  ],
-  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/midday-ai/ai-sdk-tools.git",
     "directory": "packages/ocr"
   },
-  "bugs": {
-    "url": "https://github.com/midday-ai/ai-sdk-tools/issues"
-  },
-  "homepage": "https://github.com/midday-ai/ai-sdk-tools/tree/main/packages/ocr#readme",
-  "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    }
-  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist/**/*",
-    "README.md",
-    "CHANGELOG.md"
-  ],
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "clean": "rm -rf dist",
-    "type-check": "tsc --noEmit"
-  },
-  "peerDependencies": {
-    "ai": "^6.0.104",
-    "zod": "^4.1.12",
-    "@ai-sdk/mistral": "^3.0.20",
-    "@ai-sdk/google": "^3.0.33"
-  },
-  "peerDependenciesMeta": {
-    "@ai-sdk/mistral": {
-      "optional": true
-    },
-    "@ai-sdk/google": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@types/node": "^24.10.1",
     "tsup": "^8.5.1",
@@ -68,8 +18,62 @@
   "optionalDependencies": {
     "unpdf": "^1.4.0"
   },
+  "peerDependencies": {
+    "ai": "^6.0.104",
+    "zod": "^4.1.12",
+    "@ai-sdk/mistral": "^3.0.20",
+    "@ai-sdk/google": "^3.0.33",
+    "@ai-sdk/anthropic": "^3.0.49"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "bugs": {
+    "url": "https://github.com/midday-ai/ai-sdk-tools/issues"
+  },
+  "description": "Extract structured data from invoices and receipts using AI SDK with intelligent provider fallback",
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "homepage": "https://github.com/midday-ai/ai-sdk-tools/tree/main/packages/ocr#readme",
+  "keywords": [
+    "ai",
+    "ai-sdk",
+    "ocr",
+    "invoice",
+    "receipt",
+    "document-extraction",
+    "mistral",
+    "gemini",
+    "anthropic"
+  ],
+  "license": "MIT",
+  "peerDependenciesMeta": {
+    "@ai-sdk/mistral": {
+      "optional": true
+    },
+    "@ai-sdk/google": {
+      "optional": true
+    },
+    "@ai-sdk/anthropic": {
+      "optional": true
+    }
+  },
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {}
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts"
 }

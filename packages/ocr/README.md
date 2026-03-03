@@ -5,7 +5,8 @@ Extract structured data from invoices and receipts using AI SDK with intelligent
 ## Features
 
 - **Clean API** - Simple, intuitive interface
-- **Multiple Providers** - Mistral OCR (primary) with Gemini fallback
+- **Multiple Providers** - Anthropic, Mistral, Gemini with configurable execution order
+- **Configurable Cascade** - Choose which providers to try and in what order
 - **PDF Support** - Direct PDF processing with fallback to OCR extraction
 - **Quality Validation** - Automatic quality checks with intelligent fallback
 - **Result Merging** - Combines results from multiple attempts for best accuracy
@@ -20,21 +21,66 @@ npm install @ai-sdk-tools/ocr
 bun add @ai-sdk-tools/ocr
 ```
 
+Then install the provider SDK(s) you want to use (all are optional peer dependencies):
+
+```bash
+# Anthropic (recommended for accuracy)
+npm install @ai-sdk/anthropic
+
+# Mistral (good for PDFs)
+npm install @ai-sdk/mistral
+
+# Google Gemini
+npm install @ai-sdk/google
+```
+
 ## Quick Start
 
 ```typescript
 import { ocr } from '@ai-sdk-tools/ocr';
 
-// Extract invoice data
+// Extract invoice data (uses default order: mistral → gemini → ocr-fallback)
 const invoice = await ocr(imageBuffer, 'invoice');
+
+// Use Anthropic as primary provider
+const invoice = await ocr(imageBuffer, 'invoice', {
+  providerOrder: ['anthropic', 'mistral', 'gemini'],
+});
 
 // Extract receipt data
 const receipt = await ocr(imageUrl, 'receipt');
 
 // With custom schema
-import { invoiceSchema } from '@ai-sdk-tools/ocr';
-const customInvoice = await ocr(imageFile, invoiceSchema);
+import { z } from 'zod';
+const customSchema = z.object({
+  vendor: z.string().optional(),
+  total: z.number().optional(),
+});
+const data = await ocr(imageFile, customSchema);
 ```
+
+## Provider Order
+
+Control which providers are tried and in what sequence using `providerOrder`:
+
+```typescript
+// Anthropic first, then Mistral, then Gemini
+const result = await ocr(input, 'invoice', {
+  providerOrder: ['anthropic', 'mistral', 'gemini'],
+});
+
+// Anthropic only (no fallback)
+const result = await ocr(input, 'invoice', {
+  providerOrder: ['anthropic'],
+});
+
+// Default order (when providerOrder is omitted)
+// ['mistral', 'gemini', 'ocr-fallback']
+```
+
+Available providers: `anthropic`, `mistral`, `gemini`, `ocr-fallback`
+
+The `ocr-fallback` provider is a text extraction + LLM approach, used as a last resort for PDFs when vision models fail.
 
 ## API
 
@@ -49,17 +95,7 @@ Extract structured data from a document.
 
 **Returns:** Promise with extracted structured data
 
-**Example:**
-```typescript
-const result = await ocr(imageBuffer, 'invoice', {
-  providers: {
-    mistral: { model: 'mistral-medium-latest' },
-    gemini: { model: 'gemini-1.5-pro' }
-  },
-  retries: 3,
-  timeout: 20000
-});
-```
+**Throws:** `OCRError` when all providers fail (includes per-provider attempt details)
 
 ## Options
 
@@ -67,15 +103,29 @@ All options are optional:
 
 ```typescript
 {
+  providerOrder?: OCRProviderName[],  // Provider execution order
   providers?: {
+    anthropic?: { model?: string, apiKey?: string },
     mistral?: { model?: string, apiKey?: string },
-    gemini?: { model?: string, apiKey?: string }
+    gemini?: { model?: string, apiKey?: string },
   },
-  timeout?: number,
-  retries?: number, // Default: 3
-  qualityThreshold?: QualityThreshold
+  timeout?: number,       // Per-attempt timeout in ms (default: 20000)
+  retries?: number,       // Retries per provider (default: 3)
+  qualityThreshold?: QualityThreshold,
 }
 ```
+
+## Environment Variables
+
+Each provider reads its API key from the environment:
+
+| Provider | Environment Variable |
+|----------|---------------------|
+| Anthropic | `ANTHROPIC_API_KEY` |
+| Mistral | `MISTRAL_API_KEY` |
+| Gemini | `GOOGLE_GENERATIVE_AI_API_KEY` |
+
+Or pass `apiKey` directly in the `providers` config.
 
 ## Predefined Schemas
 
@@ -83,30 +133,42 @@ All options are optional:
 import { invoiceSchema, receiptSchema } from '@ai-sdk-tools/ocr';
 ```
 
+The invoice schema extracts: vendor/customer info, dates, amounts, tax, line items, payment instructions, and more.
+
+The receipt schema extracts: vendor, date, items, totals, tax, payment method, and tip.
+
 ## Error Handling
 
 ```typescript
-import { OCRError } from '@ai-sdk-tools/ocr';
+import { ocr, OCRError } from '@ai-sdk-tools/ocr';
 
 try {
   const result = await ocr(image, 'invoice');
 } catch (error) {
   if (error instanceof OCRError) {
     console.error('OCR failed:', error.message);
-    console.error('Provider attempts:', error.attempts);
+    for (const attempt of error.attempts) {
+      console.log(`${attempt.provider}: ${attempt.success ? 'OK' : 'FAILED'} (${attempt.duration}ms)`);
+    }
   }
 }
 ```
 
 ## How It Works
 
-1. **Primary Attempt**: Mistral OCR with direct PDF/image processing
-2. **Quality Check**: Validates extracted data meets minimum standards
-3. **Fallback**: If primary fails or quality is poor, tries Gemini OCR
-4. **OCR Fallback**: If both vision models fail, extracts text and uses LLM
-5. **Result Merging**: Combines results from multiple attempts for best accuracy
+1. **Provider Cascade**: Tries each provider in `providerOrder` sequence
+2. **Quality Check**: Validates extracted data meets minimum standards after each attempt
+3. **Retry Logic**: Each provider attempt retries with exponential backoff on transient failures
+4. **Result Merging**: If multiple providers succeed, combines results for best accuracy
+5. **Error Aggregation**: If all providers fail, throws `OCRError` with per-provider diagnostics
+
+### Provider Notes
+
+- **Anthropic**: Uses prompt-based JSON extraction (avoids Anthropic's structured output union type limit). Excellent accuracy with `claude-haiku-4-5` default.
+- **Mistral**: Native PDF support via `documentPageLimit`. Good balance of speed and accuracy.
+- **Gemini**: Strong vision capabilities. Good fallback for complex documents.
+- **OCR Fallback**: Text extraction + LLM parsing. Last resort for PDFs when vision fails.
 
 ## License
 
 MIT
-
