@@ -9,6 +9,12 @@ const implementations: Record<string, TranscriptionFactory> = {
   // google: createGoogleTranscription,
 };
 
+/*
+When MODEL_PROVIDER=anthropic and no TRANSCRIPTION_PROVIDER is set, it correctly falls back to OpenAI 
+since Anthropic has no transcription. Adding a future provider is just: create google-transcription.ts, 
+register it in the implementations map — done.
+*/
+
 function resolveTranscriptionProvider(): string {
   const override = process.env.TRANSCRIPTION_PROVIDER;
   if (override) {

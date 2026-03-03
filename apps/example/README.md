@@ -34,6 +34,28 @@ MODEL_PROVIDER=anthropic
 # MODEL_REASONING=openai:o3-mini
 ```
 
+**Tool Provider Configuration:**
+
+Web search and transcription are also decoupled from the model provider. Each can be independently overridden, and they auto-select based on `MODEL_PROVIDER` when available or fall back to a sensible default:
+
+```env
+# Override web search provider (default: follows MODEL_PROVIDER, fallback: openai)
+# Supported: openai, anthropic
+WEB_SEARCH_PROVIDER=anthropic
+
+# Override transcription provider (default: follows MODEL_PROVIDER, fallback: openai)
+# Supported: openai (more providers coming as AI SDK adds support)
+TRANSCRIPTION_PROVIDER=openai
+```
+
+| Feature | Resolution Order | Fallback |
+|---------|-----------------|----------|
+| **Agents/Chat** | `MODEL_PROVIDER` → `openai` | openai |
+| **Web Search** | `WEB_SEARCH_PROVIDER` → `MODEL_PROVIDER` → `openai` | openai |
+| **Transcription** | `TRANSCRIPTION_PROVIDER` → `MODEL_PROVIDER` → `openai` | openai |
+
+This means you can run a pure Anthropic setup (`MODEL_PROVIDER=anthropic`) and web search will automatically use Anthropic's web search, while transcription falls back to OpenAI (since Anthropic has no transcription API yet).
+
 **Memory Storage Options:**
 
 | Provider | When to Use | Setup Required |

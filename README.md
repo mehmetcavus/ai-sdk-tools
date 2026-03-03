@@ -58,7 +58,7 @@ npm i @ai-sdk-tools/artifacts @ai-sdk-tools/store
 
 ### [@ai-sdk-tools/agents](./packages/agents)
 
-Multi-agent orchestration with automatic handoffs and routing. Build intelligent workflows with specialized agents for any AI provider. Includes a [Model Registry](./packages/agents/MODEL_REGISTRY_DESIGN.md) to decouple agents from specific providers — switch models with one env var.
+Multi-agent orchestration with automatic handoffs and routing. Build intelligent workflows with specialized agents for any AI provider. Includes a [Model Registry](./packages/agents/MODEL_REGISTRY_DESIGN.md) to decouple agents from specific providers — switch models with one env var. Provider-agnostic by design: web search, transcription, and other tool integrations each resolve their provider independently via env vars with automatic fallback.
 
 ```bash
 npm i @ai-sdk-tools/agents ai zod
