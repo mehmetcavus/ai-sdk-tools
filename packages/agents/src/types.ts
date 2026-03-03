@@ -30,6 +30,7 @@ export interface MemoryIdentifiers {
  */
 export interface ExtendedExecutionContext extends Record<string, unknown> {
   _memoryAddition?: string;
+  _handoffContext?: string;
 }
 
 /**
@@ -139,6 +140,8 @@ export interface HandoffInputData {
   newItems: any[];
   /** Run context */
   runContext?: any;
+  /** System-level context to merge into the receiving agent's instructions (provider-agnostic) */
+  handoffContext?: string;
 }
 
 export type HandoffInputFilter = (input: HandoffInputData) => HandoffInputData;

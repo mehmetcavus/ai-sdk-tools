@@ -112,11 +112,12 @@ export function createDefaultInputFilter(): (input: HandoffInputData) => Handoff
     
     logger.debug("Extracted tool results from newItems", { tools: Object.keys(toolResults) });
     
-    // Create a summary message with the available data
+    // Pass tool results as system-level context (merged into the agent's instructions)
+    // instead of injecting a system message into the conversation history,
+    // which breaks providers like Anthropic that disallow multiple system messages.
     if (Object.keys(toolResults).length > 0) {
       const dataSummary = Object.entries(toolResults)
         .map(([key, value]) => {
-          // Generic data summary based on value type
           if (Array.isArray(value)) {
             return `Available ${key} data: ${value.length} items found`;
           }
@@ -127,26 +128,9 @@ export function createDefaultInputFilter(): (input: HandoffInputData) => Handoff
         })
         .join('\n');
       
-      // Add a system message with the available data
-      const dataMessage: ModelMessage = {
-        role: 'system',
-        content: `Available data from previous agent:\n${dataSummary}\n\n**IMPORTANT**: Only use this data if it's DIRECTLY relevant to the current user question. If the user is asking about something different, ignore this data and call the appropriate tools.`
-      };
-      
-      // Ensure we keep the original conversation and add the data message
-      const enhancedHistory = [...input.inputHistory];
-      if (enhancedHistory.length === 0) {
-        // If no history, add a user message to maintain context
-        enhancedHistory.push({
-          role: 'user',
-          content: 'Please help with the request using the available data.'
-        });
-      }
-      enhancedHistory.push(dataMessage);
-      
       return {
         ...input,
-        inputHistory: enhancedHistory,
+        handoffContext: `Available data from previous agent:\n${dataSummary}\n\nIMPORTANT: Only use this data if it's DIRECTLY relevant to the current user question. If the user is asking about something different, ignore this data and call the appropriate tools.`,
       };
     }
     

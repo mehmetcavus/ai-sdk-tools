@@ -271,6 +271,12 @@ export class Agent<
       systemPrompt = basePrompt + memoryAddition;
     }
 
+    // Append handoff context from previous agent (e.g. tool results passed during handoff)
+    const handoffContext = extendedContext._handoffContext || "";
+    if (handoffContext) {
+      systemPrompt += `\n\n${handoffContext}`;
+    }
+
     // Resolve tools dynamically (static object or function)
     const resolvedTools =
       typeof this.configuredTools === "function"
@@ -1000,6 +1006,11 @@ export class Agent<
                       // Update conversation messages with filtered data
                       conversationMessages.length = 0;
                       conversationMessages.push(...filteredData.inputHistory);
+
+                      // Store handoff context for system prompt injection
+                      if (filteredData.handoffContext) {
+                        (executionContext as ExtendedExecutionContext)._handoffContext = filteredData.handoffContext;
+                      }
                     } catch (error) {
                       logger.error("Error applying handoff input filter", {
                         error,
@@ -1045,6 +1056,11 @@ export class Agent<
                     logger.debug("Updated conversation messages length", {
                       length: conversationMessages.length,
                     });
+
+                    // Store handoff context for system prompt injection
+                    if (filteredData.handoffContext) {
+                      (executionContext as ExtendedExecutionContext)._handoffContext = filteredData.handoffContext;
+                    }
                   }
 
                   // Call onHandoff callback if configured
