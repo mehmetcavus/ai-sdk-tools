@@ -187,12 +187,11 @@ export function AgentFlowVisualization({
 }: AgentFlowVisualizationProps) {
   const [showModelInfo, setShowModelInfo] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("session");
-  const [popoverNodeId, setPopoverNodeId] = useState<string | null>(null);
-  const [popoverPos, setPopoverPos] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
+  const [popovers, setPopovers] = useState<
+    Map<string, { x: number; y: number; pinned: boolean }>
+  >(new Map());
   const dragRef = useRef<{
+    nodeId: string;
     startX: number;
     startY: number;
     origX: number;
@@ -260,51 +259,87 @@ export function AgentFlowVisualization({
 
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      if (popoverNodeId === node.id) {
-        setPopoverNodeId(null);
-        setPopoverPos(null);
-        return;
-      }
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      setPopoverNodeId(node.id);
-      setPopoverPos({
-        x: _.clientX - rect.left,
-        y: _.clientY - rect.top,
+      setPopovers((prev) => {
+        const next = new Map(prev);
+        if (next.has(node.id)) {
+          next.delete(node.id);
+          return next;
+        }
+        // Close all unpinned popovers
+        for (const [id, state] of next) {
+          if (!state.pinned) next.delete(id);
+        }
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return next;
+        next.set(node.id, {
+          x: _.clientX - rect.left,
+          y: _.clientY - rect.top,
+          pinned: false,
+        });
+        return next;
       });
     },
-    [popoverNodeId],
+    [],
   );
 
-  const closePopover = useCallback(() => {
-    setPopoverNodeId(null);
-    setPopoverPos(null);
+  const dismissUnpinned = useCallback(() => {
+    setPopovers((prev) => {
+      const next = new Map(prev);
+      for (const [id, state] of next) {
+        if (!state.pinned) next.delete(id);
+      }
+      return next;
+    });
   }, []);
 
-  const changeViewMode = useCallback(
-    (mode: ViewMode) => {
-      setViewMode(mode);
-      closePopover();
-    },
-    [closePopover],
-  );
+  const closeSpecificPopover = useCallback((nodeId: string) => {
+    setPopovers((prev) => {
+      const next = new Map(prev);
+      next.delete(nodeId);
+      return next;
+    });
+  }, []);
+
+  const togglePin = useCallback((nodeId: string) => {
+    setPopovers((prev) => {
+      const entry = prev.get(nodeId);
+      if (!entry) return prev;
+      const next = new Map(prev);
+      next.set(nodeId, { ...entry, pinned: !entry.pinned });
+      return next;
+    });
+  }, []);
+
+  const changeViewMode = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+  }, []);
 
   const onDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      if (!popoverPos) return;
+    (nodeId: string, e: React.MouseEvent) => {
+      const entry = popovers.get(nodeId);
+      if (!entry) return;
       e.preventDefault();
       dragRef.current = {
+        nodeId,
         startX: e.clientX,
         startY: e.clientY,
-        origX: popoverPos.x,
-        origY: popoverPos.y,
+        origX: entry.x,
+        origY: entry.y,
       };
 
       const onMove = (ev: MouseEvent) => {
         if (!dragRef.current) return;
-        setPopoverPos({
-          x: dragRef.current.origX + (ev.clientX - dragRef.current.startX),
-          y: dragRef.current.origY + (ev.clientY - dragRef.current.startY),
+        const { nodeId: id, origX, origY, startX, startY } = dragRef.current;
+        setPopovers((prev) => {
+          const existing = prev.get(id);
+          if (!existing) return prev;
+          const next = new Map(prev);
+          next.set(id, {
+            ...existing,
+            x: origX + (ev.clientX - startX),
+            y: origY + (ev.clientY - startY),
+          });
+          return next;
         });
       };
       const onUp = () => {
@@ -315,7 +350,7 @@ export function AgentFlowVisualization({
       document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onUp);
     },
-    [popoverPos],
+    [popovers],
   );
 
   // Convert agent flow data to ReactFlow nodes and edges
@@ -403,6 +438,23 @@ export function AgentFlowVisualization({
     [initialNodes, initialEdges],
   );
 
+  const popoverEntries = useMemo(() => {
+    return Array.from(popovers.entries()).map(([nodeId, state]) => {
+      const history = getNodeHistory(
+        nodeId,
+        nodeId.startsWith("tool-") ? "tool" : "agent",
+      );
+      const label = nodeId.startsWith("tool-")
+        ? nodeId.replace("tool-", "")
+        : nodeId;
+      return { nodeId, state, history, label };
+    });
+  }, [popovers, getNodeHistory]);
+
+  // For request navigation in footer
+  const isRequestView = viewMode !== "session" && viewMode !== "latest";
+  const currentReqIdx = isRequestView ? requestIds.indexOf(viewMode) : -1;
+
   if (agentFlowData.nodes.length === 0) {
     return (
       <div
@@ -428,24 +480,6 @@ export function AgentFlowVisualization({
     );
   }
 
-  const popoverHistory =
-    popoverNodeId != null
-      ? getNodeHistory(
-          popoverNodeId,
-          popoverNodeId.startsWith("tool-") ? "tool" : "agent",
-        )
-      : [];
-
-  const popoverLabel = popoverNodeId
-    ? popoverNodeId.startsWith("tool-")
-      ? popoverNodeId.replace("tool-", "")
-      : popoverNodeId
-    : "";
-
-  // For request navigation in footer
-  const isRequestView = viewMode !== "session" && viewMode !== "latest";
-  const currentReqIdx = isRequestView ? requestIds.indexOf(viewMode) : -1;
-
   return (
     <div
       ref={containerRef}
@@ -456,7 +490,7 @@ export function AgentFlowVisualization({
           nodes={nodes}
           edges={edges}
           onNodeClick={handleNodeClick}
-          onPaneClick={closePopover}
+          onPaneClick={dismissUnpinned}
           nodeTypes={nodeTypes}
           nodesDraggable={false}
           fitView
@@ -479,96 +513,170 @@ export function AgentFlowVisualization({
           />
         </ReactFlow>
 
-        {/* Per-request history popover */}
-        {popoverNodeId && popoverPos && popoverHistory.length > 0 && (
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "absolute",
-              left: Math.min(
-                popoverPos.x,
-                (containerRef.current?.clientWidth ?? 400) - 260,
-              ),
-              top: Math.max(0, popoverPos.y - 180),
-              width: 240,
-              maxHeight: 220,
-              overflowX: "hidden",
-              overflowY: "auto",
-              boxSizing: "border-box",
-              background: "#18181b",
-              border: "1px solid #3f3f46",
-              borderRadius: 6,
-              padding: "10px 0",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
-              zIndex: 50,
-              fontFamily:
-                "Geist Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-              fontSize: 11,
-            }}
-          >
+        {/* Per-request history popovers (supports pinning) */}
+        {popoverEntries
+          .filter((p) => p.history.length > 0)
+          .map(({ nodeId, state, history, label }) => (
             <div
-              onMouseDown={onDragStart}
+              key={nodeId}
+              onClick={(e) => e.stopPropagation()}
               style={{
-                padding: "0 12px 8px",
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: "0.05em",
-                color: "#71717a",
-                textTransform: "uppercase",
-                borderBottom: "1px solid #27272a",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                cursor: "grab",
-                userSelect: "none",
+                position: "absolute",
+                left: Math.min(
+                  state.x,
+                  (containerRef.current?.clientWidth ?? 400) - 260,
+                ),
+                top: Math.max(0, state.y - 180),
+                width: 240,
+                maxHeight: 220,
+                overflowX: "hidden",
+                overflowY: "auto",
+                boxSizing: "border-box",
+                background: "#18181b",
+                border: `1px solid ${state.pinned ? "#a78bfa" : "#3f3f46"}`,
+                borderRadius: 6,
+                padding: "10px 0",
+                boxShadow: state.pinned
+                  ? "0 8px 24px rgba(167,139,250,0.15)"
+                  : "0 8px 24px rgba(0,0,0,0.6)",
+                zIndex: state.pinned ? 51 : 50,
+                fontFamily:
+                  "Geist Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                fontSize: 11,
               }}
             >
-              {popoverLabel} — history
-            </div>
-
-            {popoverHistory.map((entry) => (
-              <button
-                type="button"
-                key={entry.requestId}
-                onClick={() =>
-                  setViewMode((v) =>
-                    v === entry.requestId ? "session" : entry.requestId,
-                  )
-                }
+              <div
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
                   alignItems: "center",
-                  width: "100%",
-                  padding: "6px 12px",
-                  boxSizing: "border-box",
-                  background:
-                    viewMode === entry.requestId ? "#27272a" : "transparent",
-                  border: "none",
-                  color: "#f4f4f5",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  fontSize: 11,
-                  textAlign: "left",
+                  padding: "0 8px 8px 12px",
+                  borderBottom: "1px solid #27272a",
+                  gap: 4,
                 }}
               >
-                <span style={{ color: "#a1a1aa" }}>
-                  Req {entry.requestLabel}
-                </span>
-                <span style={{ display: "flex", gap: 10 }}>
-                  {entry.duration !== undefined && (
-                    <span style={{ color: "#f4f4f5" }}>
-                      {entry.duration.toFixed(2)}s
-                    </span>
-                  )}
-                  {entry.callCount !== undefined && entry.callCount > 0 && (
-                    <span style={{ color: "#71717a" }}>{entry.callCount}x</span>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+                <div
+                  onMouseDown={(e) => onDragStart(nodeId, e)}
+                  style={{
+                    flex: 1,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.05em",
+                    color: "#71717a",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    cursor: "grab",
+                    userSelect: "none",
+                  }}
+                >
+                  {label} — history
+                </div>
+                <button
+                  type="button"
+                  onClick={() => togglePin(nodeId)}
+                  title={state.pinned ? "Unpin" : "Pin"}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    color: state.pinned ? "#a78bfa" : "#52525b",
+                    transition: "color 0.15s",
+                  }}
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    aria-hidden="true"
+                    style={{
+                      transform: state.pinned
+                        ? "rotate(0deg)"
+                        : "rotate(45deg)",
+                      transition: "transform 0.15s",
+                    }}
+                  >
+                    <title>{state.pinned ? "Unpin" : "Pin"}</title>
+                    <path d="M4.146.146A.5.5 0 0 1 4.5 0h7a.5.5 0 0 1 .5.5c0 .68-.342 1.174-.646 1.479-.126.125-.25.224-.354.298v4.431l.078.048c.203.127.476.314.751.555C12.36 7.775 13 8.527 13 9.5a.5.5 0 0 1-.5.5h-4v4.5a.5.5 0 0 1-1 0V10h-4a.5.5 0 0 1-.5-.5c0-.973.64-1.725 1.17-2.189A6 6 0 0 1 5 6.708V2.277a3 3 0 0 1-.354-.298C4.342 1.674 4 1.179 4 .5a.5.5 0 0 1 .146-.354" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => closeSpecificPopover(nodeId)}
+                  title="Close"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    color: "#52525b",
+                    transition: "color 0.15s",
+                  }}
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <title>Close</title>
+                    <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z" />
+                  </svg>
+                </button>
+              </div>
+
+              {history.map((entry) => (
+                <button
+                  type="button"
+                  key={entry.requestId}
+                  onClick={() =>
+                    setViewMode((v) =>
+                      v === entry.requestId ? "session" : entry.requestId,
+                    )
+                  }
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    width: "100%",
+                    padding: "6px 12px",
+                    boxSizing: "border-box",
+                    background:
+                      viewMode === entry.requestId ? "#27272a" : "transparent",
+                    border: "none",
+                    color: "#f4f4f5",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    fontSize: 11,
+                    textAlign: "left",
+                  }}
+                >
+                  <span style={{ color: "#a1a1aa" }}>
+                    Req {entry.requestLabel}
+                  </span>
+                  <span style={{ display: "flex", gap: 10 }}>
+                    {entry.duration !== undefined && (
+                      <span style={{ color: "#f4f4f5" }}>
+                        {entry.duration.toFixed(2)}s
+                      </span>
+                    )}
+                    {entry.callCount !== undefined && entry.callCount > 0 && (
+                      <span style={{ color: "#71717a" }}>
+                        {entry.callCount}x
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ))}
 
         {/* Footer */}
         <div
