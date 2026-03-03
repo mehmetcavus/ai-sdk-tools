@@ -1212,7 +1212,7 @@ export class Agent<
             (m) => m.role === "assistant",
           );
           const totalTextLength = assistantMessages.reduce((sum, m) => {
-            return sum + (typeof m.content === "string" ? m.content.length : 0);
+            return sum + extractTextFromMessage(m).length;
           }, 0);
 
           // Only generate if response is substantial enough
@@ -1231,11 +1231,7 @@ export class Agent<
             const conversationContext = recentMessages
               .map((msg) => {
                 const role = msg.role === "user" ? "User" : "Assistant";
-                return `${role}: ${
-                  typeof msg.content === "string"
-                    ? msg.content
-                    : JSON.stringify(msg.content)
-                }`;
+                return `${role}: ${extractTextFromMessage(msg)}`;
               })
               .join("\n\n");
 
