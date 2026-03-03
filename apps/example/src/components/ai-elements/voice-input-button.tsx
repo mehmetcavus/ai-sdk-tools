@@ -113,13 +113,16 @@ export function VoiceInputButton({
             onTranscriptionChange?.(newValue);
 
             setState("success");
+            setTimeout(() => setState("idle"), 1500);
           } else {
             setState("error");
+            setTimeout(() => setState("idle"), 1500);
             toast.error("No transcription received");
           }
         } catch (error) {
           console.error("Transcription error:", error);
           setState("error");
+          setTimeout(() => setState("idle"), 1500);
           toast.error(
             error instanceof Error
               ? error.message
