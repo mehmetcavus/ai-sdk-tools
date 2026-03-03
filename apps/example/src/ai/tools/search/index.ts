@@ -1,14 +1,14 @@
 import { withModelInfo } from "@ai-sdk-tools/agents";
 import { modelFor } from "@/ai/models";
 import { createOpenAIWebSearch } from "./openai-web-search";
-// import { createAnthropicWebSearch } from "./anthropic-web-search";
+import { createAnthropicWebSearch } from "./anthropic-web-search";
 import type { WebSearchFactory } from "./types";
 
 const WEB_SEARCH_DEFAULT = "openai";
 
 const implementations: Record<string, WebSearchFactory> = {
   openai: createOpenAIWebSearch,
-  // anthropic: createAnthropicWebSearch,
+  anthropic: createAnthropicWebSearch,
 };
 
 function resolveWebSearchProvider(): string {
