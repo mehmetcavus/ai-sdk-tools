@@ -148,8 +148,6 @@ export interface AgentNode {
   id: string;
   name: string;
   status: "idle" | "executing" | "completed" | "error";
-  startTime?: number;
-  endTime?: number;
   duration?: number;
   toolCallCount: number;
   routingStrategy?: "programmatic" | "llm";
@@ -175,8 +173,6 @@ export interface ToolNode {
   agent?: string;
   description?: string;
   callCount: number;
-  startTime?: number;
-  endTime?: number;
   duration?: number;
   model?: string;
   provider?: string;
@@ -190,4 +186,34 @@ export interface AgentFlowData {
   totalRounds: number;
   totalDuration: number;
   isActive: boolean;
+}
+
+// --- Request history (incremental builder output) ---
+
+export interface HistoryToolCall {
+  tool: string;
+  toolCallId: string;
+  startTime: number;
+  endTime: number;
+  duration: number;
+  model?: string;
+  provider?: string;
+  tier?: string;
+}
+
+export interface HistoryEntry {
+  requestId: string;
+  agent: string;
+  agentStartTime: number;
+  agentEndTime: number;
+  agentDuration: number;
+  model?: string;
+  provider?: string;
+  tier?: string;
+  status: "executing" | "completed" | "error";
+  tools: HistoryToolCall[];
+  handoffFrom?: string;
+  handoffStartTime?: number;
+  handoffEndTime?: number;
+  handoffDuration?: number;
 }

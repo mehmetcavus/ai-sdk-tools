@@ -12,9 +12,9 @@ export const generalAgent = createAgent({
   name: "general",
   tier: "smart",
   temperature: 0.8,
-  instructions: (
-    ctx,
-  ) => `You are a helpful assistant for ${ctx.companyName}. Handle general questions and web searches.
+  instructions: (ctx) => `You are a helpful assistant for ${
+    ctx.companyName
+  }. Handle general questions and web searches.
 
 <background-data>
 ${formatContextForLLM(ctx)}

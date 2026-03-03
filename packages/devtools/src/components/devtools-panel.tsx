@@ -16,6 +16,7 @@ import React, {
   useState,
 } from "react";
 import { useCurrentState } from "../hooks/use-current-state";
+import { useRequestHistory } from "../hooks/use-request-history";
 import type { AIEvent, DevtoolsConfig, FilterOptions } from "../types";
 import { formatToolName, getEventTypeIcon } from "../utils/formatting";
 import { AgentFlowVisualization } from "./agent-flow-visualization";
@@ -107,6 +108,10 @@ export function DevtoolsPanel({
     useCurrentState({
       enabled: true,
     });
+
+  // History lives here (not inside AgentFlowVisualization) so it persists across tab switches
+  const { completedEntries, liveEntries, allEntries } =
+    useRequestHistory(events);
 
   // Auto-select default store when available
   useEffect(() => {
@@ -770,7 +775,13 @@ export function DevtoolsPanel({
               <EventList events={filteredEvents} />
             </div>
           )}
-          {activeTab === "agents" && <AgentFlowVisualization events={events} />}
+          {activeTab === "agents" && (
+            <AgentFlowVisualization
+              completedEntries={completedEntries}
+              liveEntries={liveEntries}
+              allEntries={allEntries}
+            />
+          )}
           {activeTab === "state" && isStoreAvailable && (
             <div className="ai-devtools-state-panel-full">
               <StateDataExplorer

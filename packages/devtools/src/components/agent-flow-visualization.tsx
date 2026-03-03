@@ -7,55 +7,33 @@ import {
   type Node,
   Position,
   ReactFlow,
-  useEdgesState,
-  useNodesState,
 } from "@xyflow/react";
 import dagre from "dagre";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import "@xyflow/react/dist/style.css";
-import type { AgentFlowData, AIEvent } from "../types";
+import type { AgentFlowData, HistoryEntry } from "../types";
 import { AgentNode } from "./agent-node";
 import { ToolNode } from "./tool-node";
 
-type ViewMode = "session" | "latest" | number;
+type ViewMode = "session" | "latest" | string;
 
-interface RequestEntry {
-  requestIndex: number;
+interface PopoverEntry {
+  requestId: string;
+  requestLabel: number;
   duration?: number;
   callCount?: number;
 }
 
 interface AgentFlowVisualizationProps {
-  events: AIEvent[];
+  completedEntries: HistoryEntry[];
+  liveEntries: HistoryEntry[];
+  allEntries: HistoryEntry[];
 }
 
 const nodeTypes = {
   agentNode: AgentNode,
   toolNode: ToolNode,
 } as const;
-
-/**
- * Split the event stream into per-request groups.
- * Each group ends at an `agent-complete` event; any trailing events
- * after the last `agent-complete` form the active (in-progress) request.
- */
-function segmentEventsByRequest(events: AIEvent[]): AIEvent[][] {
-  const groups: AIEvent[][] = [];
-  let current: AIEvent[] = [];
-
-  for (const event of events) {
-    current.push(event);
-    if (event.type === "agent-complete") {
-      groups.push(current);
-      current = [];
-    }
-  }
-  if (current.length > 0) {
-    groups.push(current);
-  }
-
-  return groups;
-}
 
 // Auto-layout using dagre
 function getLayoutedElements(
@@ -88,8 +66,6 @@ function getLayoutedElements(
       ...node,
       targetPosition: isHorizontal ? Position.Left : Position.Top,
       sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
-      // Shift dagre node position (anchor=center) to top-left
-      // to match React Flow node anchor point (top-left)
       position: {
         x: nodeWithPosition.x - nodeWidth / 2,
         y: nodeWithPosition.y - nodeHeight / 2,
@@ -100,348 +76,186 @@ function getLayoutedElements(
   return { nodes: layoutedNodes, edges };
 }
 
-// Process events into agent flow data
-function processAgentEvents(events: AIEvent[]): AgentFlowData {
+/**
+ * Aggregate HistoryEntry[] into AgentFlowData for the visualization.
+ * Simple: iterate entries, sum by agent/tool name.
+ */
+function aggregateEntries(entries: HistoryEntry[]): AgentFlowData {
   const agentMap = new Map<
     string,
     {
-      name: string;
-      status: "idle" | "executing" | "completed" | "error";
-      startTime?: number;
-      endTime?: number;
+      durationMs: number;
       toolCallCount: number;
-      routingStrategy?: "programmatic" | "llm";
-      matchScore?: number;
-      round?: number;
+      status: "idle" | "executing" | "completed" | "error";
       model?: string;
       provider?: string;
       tier?: string;
     }
   >();
-  const handoffs: Array<{
-    id: string;
-    from: string;
-    to: string;
-    reason?: string;
-    routingStrategy?: "programmatic" | "llm";
-    timestamp: number;
-  }> = [];
   const toolMap = new Map<
     string,
     {
-      name: string;
-      agent?: string;
-      description?: string;
+      durationMs: number;
       callCount: number;
-      startTime?: number;
-      endTime?: number;
+      agent?: string;
       model?: string;
       provider?: string;
       tier?: string;
     }
   >();
-  const toolCallIdToName = new Map<string, string>();
-  const toolModelInfoMap = new Map<string, { model?: string; provider?: string; tier?: string }>();
-  let totalRounds = 0;
-  let isActive = false;
-  let currentAgent: string | undefined;
+  const handoffSet = new Map<string, { from: string; to: string }>();
+  let totalDurationMs = 0;
 
-  for (const event of events) {
-    switch (event.type) {
-      case "agent-start": {
-        const agentName = event.metadata?.agent;
-        if (agentName) {
-          currentAgent = agentName;
-          const existing = agentMap.get(agentName);
-          agentMap.set(agentName, {
-            name: agentName,
-            status: "executing",
-            startTime: existing?.startTime || event.timestamp,
-            endTime: existing?.endTime,
-            toolCallCount: existing?.toolCallCount || 0,
-            routingStrategy: event.metadata?.routingStrategy,
-            matchScore: event.metadata?.matchScore,
-            round: event.metadata?.round,
-            model: event.metadata?.model || existing?.model,
-            provider: event.metadata?.provider || existing?.provider,
-            tier: event.metadata?.tier || existing?.tier,
-          });
-          isActive = true;
-        }
-        break;
-      }
+  for (const entry of entries) {
+    const prev = agentMap.get(entry.agent);
+    agentMap.set(entry.agent, {
+      durationMs: (prev?.durationMs ?? 0) + entry.agentDuration,
+      toolCallCount: (prev?.toolCallCount ?? 0) + entry.tools.length,
+      status: entry.status,
+      model: entry.model ?? prev?.model,
+      provider: entry.provider ?? prev?.provider,
+      tier: entry.tier ?? prev?.tier,
+    });
 
-      case "agent-finish": {
-        const agentName = event.metadata?.agent;
-        if (agentName && agentMap.has(agentName)) {
-          const agent = agentMap.get(agentName);
-          if (agent) {
-            agentMap.set(agentName, {
-              ...agent,
-              status: "completed",
-              endTime: event.timestamp,
-              model: event.metadata?.model || agent.model,
-              provider: event.metadata?.provider || agent.provider,
-              tier: event.metadata?.tier || agent.tier,
-            });
-          }
-        }
-        break;
-      }
+    for (const tc of entry.tools) {
+      const prevTool = toolMap.get(tc.tool);
+      toolMap.set(tc.tool, {
+        durationMs: (prevTool?.durationMs ?? 0) + tc.duration,
+        callCount: (prevTool?.callCount ?? 0) + 1,
+        agent: entry.agent,
+        model: tc.model ?? prevTool?.model,
+        provider: tc.provider ?? prevTool?.provider,
+        tier: tc.tier ?? prevTool?.tier,
+      });
+    }
 
-      case "agent-error": {
-        const agentName = event.metadata?.agent;
-        if (agentName && agentMap.has(agentName)) {
-          const agent = agentMap.get(agentName);
-          if (agent) {
-            agentMap.set(agentName, {
-              ...agent,
-              status: "error",
-              endTime: event.timestamp,
-            });
-          }
-        }
-        break;
-      }
-
-      case "agent-handoff": {
-        const fromAgent = event.metadata?.fromAgent;
-        const toAgent = event.metadata?.toAgent;
-        if (fromAgent && toAgent) {
-          handoffs.push({
-            id: `handoff-${handoffs.length}`,
-            from: fromAgent,
-            to: toAgent,
-            reason: event.metadata?.reason,
-            routingStrategy: event.metadata?.routingStrategy,
-            timestamp: event.timestamp,
-          });
-
-          // Set routing strategy on the target agent
-          if (toAgent && event.metadata?.routingStrategy) {
-            const targetAgent = agentMap.get(toAgent);
-            if (targetAgent) {
-              agentMap.set(toAgent, {
-                ...targetAgent,
-                routingStrategy: event.metadata.routingStrategy,
-              });
-            } else {
-              // Create placeholder for target agent if it doesn't exist yet
-              agentMap.set(toAgent, {
-                name: toAgent,
-                status: "idle",
-                toolCallCount: 0,
-                routingStrategy: event.metadata.routingStrategy,
-              });
-            }
-          }
-        }
-        break;
-      }
-
-      case "agent-complete": {
-        totalRounds = event.metadata?.totalRounds || totalRounds;
-        isActive = false;
-        break;
-      }
-
-      case "tool-model-info": {
-        const tools = event.data?.tools;
-        if (tools && typeof tools === "object") {
-          for (const [name, info] of Object.entries(tools)) {
-            toolModelInfoMap.set(name, info as { model?: string; provider?: string; tier?: string });
-          }
-        }
-        break;
-      }
-
-      case "tool-call-start": {
-        // Track tool calls and create tool nodes
-        const toolName = event.metadata?.toolName || event.data?.toolName;
-        const toolCallId = event.metadata?.toolCallId || event.data?.toolCallId;
-        const agentName = currentAgent || event.metadata?.agent;
-
-        // Filter out internal orchestration tools from visualization
-        const isInternalTool = toolName === "handoff_to_agent"
-
-        // Only track valid tool names (not undefined, empty, "unknown", or internal)
-        if (
-          toolName &&
-          toolName !== "unknown" &&
-          toolName.trim() !== "" &&
-          !isInternalTool
-        ) {
-          if (toolCallId) toolCallIdToName.set(toolCallId, toolName);
-
-          const declaredInfo = toolModelInfoMap.get(toolName);
-          const existing = toolMap.get(toolName);
-          toolMap.set(toolName, {
-            name: toolName,
-            agent: agentName,
-            description: event.metadata?.description || `${toolName} tool`,
-            callCount: (existing?.callCount || 0) + 1,
-            startTime: existing?.startTime ?? event.timestamp,
-            endTime: existing?.endTime,
-            model: existing?.model || declaredInfo?.model,
-            provider: existing?.provider || declaredInfo?.provider,
-            tier: existing?.tier || declaredInfo?.tier,
-          });
-
-          // Also increment agent's tool call count
-          if (agentName && agentMap.has(agentName)) {
-            const agent = agentMap.get(agentName);
-            if (agent) {
-              agentMap.set(agentName, {
-                ...agent,
-                toolCallCount: agent.toolCallCount + 1,
-              });
-            }
-          }
-        }
-        break;
-      }
-
-      case "tool-call-result": {
-        const toolCallId = event.metadata?.toolCallId || event.data?.toolCallId;
-        const directName = event.metadata?.toolName || event.data?.toolName;
-        const toolName =
-          (directName && toolMap.has(directName) ? directName : null) ||
-          (toolCallId ? toolCallIdToName.get(toolCallId) : null);
-
-        if (toolName && toolMap.has(toolName)) {
-          const tool = toolMap.get(toolName)!;
-          toolMap.set(toolName, {
-            ...tool,
-            endTime: event.timestamp,
-          });
-        }
-        break;
-      }
-
-      case "finish": {
-        if (currentAgent && agentMap.has(currentAgent)) {
-          const agent = agentMap.get(currentAgent);
-          if (agent) {
-            const responseModel =
-              event.data?.response?.model || event.data?.model;
-            agentMap.set(currentAgent, {
-              ...agent,
-              status: agent.status === "executing" ? "completed" : agent.status,
-              endTime: agent.endTime ?? event.timestamp,
-              ...(responseModel ? { model: responseModel } : {}),
-            });
-          }
-        }
-        isActive = false;
-        break;
+    if (entry.handoffFrom) {
+      const key = `${entry.handoffFrom}->${entry.agent}`;
+      if (!handoffSet.has(key)) {
+        handoffSet.set(key, { from: entry.handoffFrom, to: entry.agent });
       }
     }
+
+    totalDurationMs += entry.agentDuration;
   }
 
-  const nodes = Array.from(agentMap.entries()).map(([id, data]) => ({
-    id,
-    ...data,
-    duration:
-      data.startTime && data.endTime
-        ? (data.endTime - data.startTime) / 1000
-        : undefined,
-  }));
-
-  const tools = Array.from(toolMap.entries()).map(([id, data]) => ({
-    id,
-    ...data,
-    duration:
-      data.startTime && data.endTime
-        ? (data.endTime - data.startTime) / 1000
-        : undefined,
-  }));
-
-  const firstEvent = events.find(
-    (e) => e.type === "agent-start" || e.type === "agent-handoff",
-  );
-  const lastEvent = [...events]
-    .reverse()
-    .find((e) => e.type === "agent-finish" || e.type === "agent-complete");
-
-  const totalDuration =
-    firstEvent && lastEvent
-      ? (lastEvent.timestamp - firstEvent.timestamp) / 1000
-      : 0;
+  const isActive = entries.some((e) => e.status === "executing");
 
   return {
-    nodes,
-    tools,
-    handoffs,
-    totalRounds,
-    totalDuration,
+    nodes: Array.from(agentMap.entries()).map(([id, d]) => ({
+      id,
+      name: id,
+      status: d.status,
+      duration:
+        d.durationMs > 0
+          ? d.durationMs / 1000
+          : d.toolCallCount > 0
+          ? 0
+          : undefined,
+      toolCallCount: d.toolCallCount,
+      model: d.model,
+      provider: d.provider,
+      tier: d.tier,
+    })),
+    tools: Array.from(toolMap.entries()).map(([id, d]) => ({
+      id,
+      name: id,
+      agent: d.agent,
+      description: `A ${id} tool`,
+      callCount: d.callCount,
+      duration: d.callCount > 0 ? d.durationMs / 1000 : undefined,
+      model: d.model,
+      provider: d.provider,
+      tier: d.tier,
+    })),
+    handoffs: Array.from(handoffSet.entries()).map(([, h], i) => ({
+      id: `handoff-${i}`,
+      from: h.from,
+      to: h.to,
+      timestamp: 0,
+    })),
+    totalRounds: 0,
+    totalDuration: totalDurationMs / 1000,
     isActive,
   };
 }
 
 export function AgentFlowVisualization({
-  events,
+  completedEntries,
+  liveEntries,
+  allEntries,
 }: AgentFlowVisualizationProps) {
   const [showModelInfo, setShowModelInfo] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("session");
   const [popoverNodeId, setPopoverNodeId] = useState<string | null>(null);
-  const [popoverPos, setPopoverPos] = useState<{ x: number; y: number } | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const requestGroups = useMemo(
-    () => segmentEventsByRequest(events),
-    [events],
+  // Unique request IDs in chronological order (for labelling "Req 1", "Req 2", etc.)
+  const requestIds = useMemo(
+    () => [...new Set(allEntries.map((e) => e.requestId))],
+    [allEntries],
   );
 
-  const totalRequests = requestGroups.length;
+  const totalRequests = requestIds.length;
 
-  const filteredEvents = useMemo(() => {
-    if (viewMode === "session") return events;
-    if (viewMode === "latest") return requestGroups[totalRequests - 1] ?? [];
-    if (typeof viewMode === "number") return requestGroups[viewMode] ?? [];
-    return events;
-  }, [events, viewMode, requestGroups, totalRequests]);
+  const agentFlowData = useMemo((): AgentFlowData => {
+    if (viewMode === "session") {
+      return aggregateEntries(allEntries);
+    }
+    if (viewMode === "latest") {
+      if (liveEntries.length > 0) return aggregateEntries(liveEntries);
+      const lastId = completedEntries[completedEntries.length - 1]?.requestId;
+      return lastId
+        ? aggregateEntries(
+            completedEntries.filter((e) => e.requestId === lastId),
+          )
+        : aggregateEntries([]);
+    }
+    // viewMode is a requestId string
+    const filtered = allEntries.filter((e) => e.requestId === viewMode);
+    return filtered.length > 0
+      ? aggregateEntries(filtered)
+      : aggregateEntries(allEntries);
+  }, [viewMode, allEntries, completedEntries, liveEntries]);
 
-  const agentFlowData = useMemo(
-    () => processAgentEvents(filteredEvents),
-    [filteredEvents],
-  );
-
-  // Pre-process per-request flow data for the drill-down popover
-  const perRequestFlowData = useMemo(
-    () => requestGroups.map((group) => processAgentEvents(group)),
-    [requestGroups],
-  );
-
-  // Build per-node request history for popover
   const getNodeHistory = useCallback(
-    (nodeId: string, kind: "agent" | "tool"): RequestEntry[] => {
-      const entries: RequestEntry[] = [];
-      for (let i = 0; i < perRequestFlowData.length; i++) {
-        const data = perRequestFlowData[i];
-        if (kind === "agent") {
-          const node = data.nodes.find((n) => n.id === nodeId);
-          if (node) {
-            entries.push({
-              requestIndex: i,
-              duration: node.duration,
-              callCount: node.toolCallCount,
-            });
-          }
-        } else {
-          const rawId = nodeId.replace(/^tool-/, "");
-          const tool = data.tools.find((t) => t.id === rawId);
-          if (tool) {
-            entries.push({
-              requestIndex: i,
-              duration: tool.duration,
-              callCount: tool.callCount,
-            });
-          }
-        }
+    (nodeId: string, kind: "agent" | "tool"): PopoverEntry[] => {
+      const name = kind === "tool" ? nodeId.replace(/^tool-/, "") : nodeId;
+
+      if (kind === "agent") {
+        return allEntries
+          .filter((e) => e.agent === name)
+          .map((e) => ({
+            requestId: e.requestId,
+            requestLabel: requestIds.indexOf(e.requestId) + 1,
+            duration: e.agentDuration / 1000,
+            callCount: e.tools.length,
+          }));
       }
-      return entries;
+
+      return allEntries
+        .filter((e) => e.tools.some((t) => t.tool === name))
+        .map((e) => {
+          const calls = e.tools.filter((t) => t.tool === name);
+          return {
+            requestId: e.requestId,
+            requestLabel: requestIds.indexOf(e.requestId) + 1,
+            duration: calls.reduce((s, c) => s + c.duration, 0) / 1000,
+            callCount: calls.length,
+          };
+        });
     },
-    [perRequestFlowData],
+    [allEntries, requestIds],
   );
 
   const handleNodeClick = useCallback(
@@ -473,6 +287,35 @@ export function AgentFlowVisualization({
       closePopover();
     },
     [closePopover],
+  );
+
+  const onDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      if (!popoverPos) return;
+      e.preventDefault();
+      dragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        origX: popoverPos.x,
+        origY: popoverPos.y,
+      };
+
+      const onMove = (ev: MouseEvent) => {
+        if (!dragRef.current) return;
+        setPopoverPos({
+          x: dragRef.current.origX + (ev.clientX - dragRef.current.startX),
+          y: dragRef.current.origY + (ev.clientY - dragRef.current.startY),
+        });
+      };
+      const onUp = () => {
+        dragRef.current = null;
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [popoverPos],
   );
 
   // Convert agent flow data to ReactFlow nodes and edges
@@ -555,24 +398,10 @@ export function AgentFlowVisualization({
     return [...handoffEdges, ...toolEdges];
   }, [agentFlowData.handoffs, agentFlowData.tools]);
 
-  const layoutedElements = useMemo(() => {
-    return getLayoutedElements(initialNodes, initialEdges, "LR");
-  }, [initialNodes, initialEdges]);
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(
-    layoutedElements.nodes,
+  const { nodes, edges } = useMemo(
+    () => getLayoutedElements(initialNodes, initialEdges, "LR"),
+    [initialNodes, initialEdges],
   );
-  const [edges, setEdges, onEdgesChange] = useEdgesState(
-    layoutedElements.edges,
-  );
-
-  useEffect(() => {
-    const newLayout = getLayoutedElements(initialNodes, initialEdges, "LR");
-    setNodes(newLayout.nodes);
-    setEdges(newLayout.edges);
-  }, [initialNodes, initialEdges, setNodes, setEdges]);
-
-  const onInit = useCallback(() => {}, []);
 
   if (agentFlowData.nodes.length === 0) {
     return (
@@ -613,18 +442,23 @@ export function AgentFlowVisualization({
       : popoverNodeId
     : "";
 
+  // For request navigation in footer
+  const isRequestView = viewMode !== "session" && viewMode !== "latest";
+  const currentReqIdx = isRequestView ? requestIds.indexOf(viewMode) : -1;
+
   return (
-    <div ref={containerRef} style={{ height: "100%", width: "100%", background: "#000000" }}>
+    <div
+      ref={containerRef}
+      style={{ height: "100%", width: "100%", background: "#000000" }}
+    >
       <div style={{ height: "100%", width: "100%", position: "relative" }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
           onPaneClick={closePopover}
-          onInit={onInit}
           nodeTypes={nodeTypes}
+          nodesDraggable={false}
           fitView
           fitViewOptions={{ padding: 0.3, maxZoom: 0.8 }}
           minZoom={0.3}
@@ -648,13 +482,19 @@ export function AgentFlowVisualization({
         {/* Per-request history popover */}
         {popoverNodeId && popoverPos && popoverHistory.length > 0 && (
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               position: "absolute",
-              left: Math.min(popoverPos.x, (containerRef.current?.clientWidth ?? 400) - 260),
+              left: Math.min(
+                popoverPos.x,
+                (containerRef.current?.clientWidth ?? 400) - 260,
+              ),
               top: Math.max(0, popoverPos.y - 180),
               width: 240,
               maxHeight: 220,
+              overflowX: "hidden",
               overflowY: "auto",
+              boxSizing: "border-box",
               background: "#18181b",
               border: "1px solid #3f3f46",
               borderRadius: 6,
@@ -667,6 +507,7 @@ export function AgentFlowVisualization({
             }}
           >
             <div
+              onMouseDown={onDragStart}
               style={{
                 padding: "0 12px 8px",
                 fontSize: 10,
@@ -675,26 +516,34 @@ export function AgentFlowVisualization({
                 color: "#71717a",
                 textTransform: "uppercase",
                 borderBottom: "1px solid #27272a",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                cursor: "grab",
+                userSelect: "none",
               }}
             >
-              {popoverLabel} — request history
+              {popoverLabel} — history
             </div>
 
             {popoverHistory.map((entry) => (
               <button
                 type="button"
-                key={entry.requestIndex}
-                onClick={() => changeViewMode(entry.requestIndex)}
+                key={entry.requestId}
+                onClick={() =>
+                  setViewMode((v) =>
+                    v === entry.requestId ? "session" : entry.requestId,
+                  )
+                }
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
                   width: "100%",
                   padding: "6px 12px",
+                  boxSizing: "border-box",
                   background:
-                    typeof viewMode === "number" && viewMode === entry.requestIndex
-                      ? "#27272a"
-                      : "transparent",
+                    viewMode === entry.requestId ? "#27272a" : "transparent",
                   border: "none",
                   color: "#f4f4f5",
                   cursor: "pointer",
@@ -704,7 +553,7 @@ export function AgentFlowVisualization({
                 }}
               >
                 <span style={{ color: "#a1a1aa" }}>
-                  Req {entry.requestIndex + 1}
+                  Req {entry.requestLabel}
                 </span>
                 <span style={{ display: "flex", gap: 10 }}>
                   {entry.duration !== undefined && (
@@ -713,33 +562,34 @@ export function AgentFlowVisualization({
                     </span>
                   )}
                   {entry.callCount !== undefined && entry.callCount > 0 && (
-                    <span style={{ color: "#71717a" }}>
-                      {entry.callCount}x
-                    </span>
+                    <span style={{ color: "#71717a" }}>{entry.callCount}x</span>
                   )}
                 </span>
               </button>
             ))}
           </div>
         )}
-        
+
         {/* Footer */}
-        <div style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: "28px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "0 12px",
-          fontFamily: "Geist Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace",
-          fontSize: "10px",
-          color: "#cccccc",
-          background: "rgba(0,0,0,0.6)",
-          backdropFilter: "blur(4px)",
-        }}>
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "28px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "0 12px",
+            fontFamily:
+              "Geist Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace",
+            fontSize: "10px",
+            color: "#cccccc",
+            background: "rgba(0,0,0,0.6)",
+            backdropFilter: "blur(4px)",
+          }}
+        >
           {/* Left: view mode controls */}
           <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
             {(["session", "latest"] as const).map((mode) => (
@@ -749,7 +599,9 @@ export function AgentFlowVisualization({
                 onClick={() => changeViewMode(mode)}
                 style={{
                   background: viewMode === mode ? "#27272a" : "transparent",
-                  border: `1px solid ${viewMode === mode ? "#a78bfa" : "#3f3f46"}`,
+                  border: `1px solid ${
+                    viewMode === mode ? "#a78bfa" : "#3f3f46"
+                  }`,
                   borderRadius: 3,
                   padding: "1px 8px",
                   fontSize: 10,
@@ -763,44 +615,53 @@ export function AgentFlowVisualization({
               </button>
             ))}
 
-            {typeof viewMode === "number" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 2, marginLeft: 4 }}>
+            {isRequestView && currentReqIdx >= 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                  marginLeft: 4,
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => {
-                    if (typeof viewMode === "number" && viewMode > 0)
-                      changeViewMode(viewMode - 1);
+                    if (currentReqIdx > 0)
+                      changeViewMode(requestIds[currentReqIdx - 1]);
                   }}
-                  disabled={viewMode === 0}
+                  disabled={currentReqIdx === 0}
                   style={{
                     background: "transparent",
                     border: "1px solid #3f3f46",
                     borderRadius: 3,
                     padding: "1px 4px",
                     fontSize: 10,
-                    color: viewMode === 0 ? "#27272a" : "#a1a1aa",
-                    cursor: viewMode === 0 ? "default" : "pointer",
+                    color: currentReqIdx === 0 ? "#27272a" : "#a1a1aa",
+                    cursor: currentReqIdx === 0 ? "default" : "pointer",
                     fontFamily: "inherit",
                     lineHeight: "16px",
                   }}
                 >
                   {"<"}
                 </button>
-                <span style={{
-                  padding: "0 4px",
-                  fontSize: 10,
-                  color: "#a78bfa",
-                  whiteSpace: "nowrap",
-                }}>
-                  Req {viewMode + 1}/{totalRequests}
+                <span
+                  style={{
+                    padding: "0 4px",
+                    fontSize: 10,
+                    color: "#a78bfa",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Req {currentReqIdx + 1}/{totalRequests}
                 </span>
                 <button
                   type="button"
                   onClick={() => {
-                    if (typeof viewMode === "number" && viewMode < totalRequests - 1)
-                      changeViewMode(viewMode + 1);
+                    if (currentReqIdx < totalRequests - 1)
+                      changeViewMode(requestIds[currentReqIdx + 1]);
                   }}
-                  disabled={viewMode === totalRequests - 1}
+                  disabled={currentReqIdx === totalRequests - 1}
                   style={{
                     background: "transparent",
                     border: "1px solid #3f3f46",
@@ -808,9 +669,13 @@ export function AgentFlowVisualization({
                     padding: "1px 4px",
                     fontSize: 10,
                     color:
-                      viewMode === totalRequests - 1 ? "#27272a" : "#a1a1aa",
+                      currentReqIdx === totalRequests - 1
+                        ? "#27272a"
+                        : "#a1a1aa",
                     cursor:
-                      viewMode === totalRequests - 1 ? "default" : "pointer",
+                      currentReqIdx === totalRequests - 1
+                        ? "default"
+                        : "pointer",
                     fontFamily: "inherit",
                     lineHeight: "16px",
                   }}
@@ -841,23 +706,22 @@ export function AgentFlowVisualization({
               Models
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              <span style={{ fontWeight: 600, color: "#ffffff" }}>{agentFlowData.nodes.length}</span>
+              <span style={{ fontWeight: 600, color: "#ffffff" }}>
+                {agentFlowData.nodes.length}
+              </span>
               <span style={{ color: "#666666" }}>Agents</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              <span style={{ fontWeight: 600, color: "#ffffff" }}>{agentFlowData.handoffs.length}</span>
+              <span style={{ fontWeight: 600, color: "#ffffff" }}>
+                {agentFlowData.handoffs.length}
+              </span>
               <span style={{ color: "#666666" }}>Handoffs</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              <span style={{ fontWeight: 600, color: "#ffffff" }}>{agentFlowData.totalRounds}</span>
-              <span style={{ color: "#666666" }}>Rounds</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
               <span style={{ fontWeight: 600, color: "#ffffff" }}>
-                {agentFlowData.totalDuration > 0 
-                  ? `${(agentFlowData.totalDuration / 1000).toFixed(2)}s`
-                  : "0s"
-                }
+                {agentFlowData.totalDuration > 0
+                  ? `${agentFlowData.totalDuration.toFixed(2)}s`
+                  : "0s"}
               </span>
               <span style={{ color: "#666666" }}>Duration</span>
             </div>

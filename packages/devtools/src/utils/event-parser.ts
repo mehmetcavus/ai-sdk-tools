@@ -395,6 +395,21 @@ export function parseEventFromDataPart(
     };
   }
 
+  // Handle agent-complete events (request boundary marker for devtools)
+  if (dataPart.type === "data-agent-complete") {
+    const completeData = (dataPart.data || {}) as { totalRounds?: number };
+    return {
+      id: eventId,
+      timestamp,
+      type: "agent-complete",
+      data: completeData,
+      metadata: {
+        totalRounds: completeData.totalRounds,
+        originalType: dataPart.type,
+      },
+    };
+  }
+
   // Handle agent handoff events
   if (dataPart.type === "data-agent-handoff") {
     const handoffData = dataPart.data || {};

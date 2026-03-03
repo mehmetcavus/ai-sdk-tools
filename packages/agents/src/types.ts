@@ -374,6 +374,10 @@ export interface AgentDataParts {
   "tool-model-info": {
     tools: Record<string, { model?: string; provider?: string; tier?: string }>;
   };
+  /** Agent orchestration complete (transient — signals request boundary to devtools) */
+  "agent-complete": {
+    totalRounds: number;
+  };
   /** Suggested prompts (transient) */
   suggestions: {
     prompts: string[];

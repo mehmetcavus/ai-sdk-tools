@@ -162,7 +162,7 @@ function AgentNodeComponent({ data }: NodeProps) {
                   background: "#27272a",
                   borderRadius: 2,
                   fontSize: 10,
-                  color: "#a1a1aa",
+                  color: "#22d3ee",
                 }}
               >
                 {tier}

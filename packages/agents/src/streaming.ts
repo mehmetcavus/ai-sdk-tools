@@ -106,6 +106,17 @@ export function writeToolModelInfo(
 }
 
 /**
+ * Write a transient agent-complete event to mark the end of a request.
+ * Devtools uses this as a request boundary for per-request history.
+ */
+export function writeAgentComplete(
+  writer: UIMessageStreamWriter,
+  data: AgentDataParts["agent-complete"],
+): void {
+  writeDataPart(writer, "data-agent-complete", data, { transient: true });
+}
+
+/**
  * Write transient suggested prompts.
  *
  * Suggested prompts are ephemeral and won't be added to message history.

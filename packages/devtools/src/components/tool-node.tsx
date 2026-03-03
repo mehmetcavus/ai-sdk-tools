@@ -18,7 +18,16 @@ interface ToolNodeData {
 
 function ToolNodeComponent({ data }: NodeProps) {
   const nodeData = data as unknown as ToolNodeData;
-  const { name, description, duration, callCount, model, provider, tier, showModelInfo } = nodeData;
+  const {
+    name,
+    description,
+    duration,
+    callCount,
+    model,
+    provider,
+    tier,
+    showModelInfo,
+  } = nodeData;
   const hasModelInfo = showModelInfo && (model || provider);
 
   return (
@@ -109,18 +118,22 @@ function ToolNodeComponent({ data }: NodeProps) {
               color: "#71717a",
             }}
           >
-            {provider && (
-              <span style={{ color: "#a78bfa" }}>{provider}</span>
-            )}
+            {provider && <span style={{ color: "#a78bfa" }}>{provider}</span>}
             {provider && model && <span style={{ color: "#3f3f46" }}>/</span>}
-            {model && (
-              <span style={{ color: "#8b8b8b" }}>{model}</span>
-            )}
+            {model && <span style={{ color: "#8b8b8b" }}>{model}</span>}
             {tier && (
-              <>
-                <span style={{ color: "#3f3f46" }}>/</span>
-                <span style={{ color: "#22d3ee" }}>{tier}</span>
-              </>
+              <span
+                style={{
+                  marginLeft: "auto",
+                  padding: "1px 5px",
+                  background: "#27272a",
+                  borderRadius: 2,
+                  fontSize: 10,
+                  color: "#22d3ee",
+                }}
+              >
+                {tier}
+              </span>
             )}
           </div>
         )}
@@ -151,7 +164,7 @@ function ToolNodeComponent({ data }: NodeProps) {
                   </span>
                 </>
               )}
-              {callCount && callCount > 1 && (
+              {callCount != null && callCount > 0 && (
                 <>
                   <span style={{ color: "#71717a" }}>Calls</span>
                   <span style={{ color: "#f4f4f5", fontWeight: 500 }}>

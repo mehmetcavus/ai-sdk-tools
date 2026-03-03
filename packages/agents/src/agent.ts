@@ -31,7 +31,12 @@ import {
 } from "./handoff.js";
 import { promptWithHandoffInstructions } from "./handoff-prompt.js";
 import { AgentRunContext } from "./run-context.js";
-import { writeAgentStatus, writeSuggestions, writeToolModelInfo } from "./streaming.js";
+import {
+  writeAgentComplete,
+  writeAgentStatus,
+  writeSuggestions,
+  writeToolModelInfo,
+} from "./streaming.js";
 import { extractToolModelInfo } from "./tool-metadata.js";
 import { createDefaultInputFilter } from "./tool-result-extractor.js";
 import type {
@@ -56,8 +61,17 @@ import { extractTextFromMessage, stripMetadata } from "./utils.js";
 
 const logger = createLogger("AGENT");
 
-function getModelInfo(agent: unknown): Pick<import("./types.js").AgentDataParts["agent-status"], "model" | "provider" | "tier"> {
-  const info = (agent as { modelInfo?: { model?: string; provider?: string; tier?: string } }).modelInfo;
+function getModelInfo(
+  agent: unknown,
+): Pick<
+  import("./types.js").AgentDataParts["agent-status"],
+  "model" | "provider" | "tier"
+> {
+  const info = (
+    agent as {
+      modelInfo?: { model?: string; provider?: string; tier?: string };
+    }
+  ).modelInfo;
   if (!info) return {};
   return { model: info.model, provider: info.provider, tier: info.tier };
 }
@@ -84,7 +98,11 @@ export class Agent<
     | Record<string, Tool>
     | ((context: TContext) => Record<string, Tool>);
   private readonly modelSettings?: Record<string, unknown>;
-  public readonly modelInfo?: { model?: string; provider?: string; tier?: string };
+  public readonly modelInfo?: {
+    model?: string;
+    provider?: string;
+    tier?: string;
+  };
   private readonly maxTurns: number;
   // Cache for system prompt construction
   private _cachedSystemPrompt?: string;
@@ -177,7 +195,9 @@ export class Agent<
       };
     } catch (error) {
       throw new Error(
-        `Agent ${this.name} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Agent ${this.name} failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       );
     }
   }
@@ -211,7 +231,11 @@ export class Agent<
     const memoryAddition = extendedContext._memoryAddition || "";
 
     // Build cache key for static parts
-    const cacheKey = `${typeof this.instructions === "string" ? this.instructions : "dynamic"}_${this.handoffAgents.length}_${this.memory?.workingMemory?.enabled || false}`;
+    const cacheKey = `${
+      typeof this.instructions === "string" ? this.instructions : "dynamic"
+    }_${this.handoffAgents.length}_${
+      this.memory?.workingMemory?.enabled || false
+    }`;
 
     // Build system prompt with caching for static parts
     let systemPrompt: string;
@@ -345,7 +369,10 @@ export class Agent<
     throw new Error("No valid options provided to stream method");
   }
 
-  getToolModelInfo(): Record<string, import("./tool-metadata.js").ToolModelInfo> {
+  getToolModelInfo(): Record<
+    string,
+    import("./tool-metadata.js").ToolModelInfo
+  > {
     if (typeof this.configuredTools === "function") return {};
     return extractToolModelInfo(this.configuredTools);
   }
@@ -479,7 +506,9 @@ export class Agent<
         const runContext = new AgentRunContext(context || {});
         runContext.metadata = {
           agent: this.name,
-          requestId: `req_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+          requestId: `req_${Date.now()}_${Math.random()
+            .toString(36)
+            .substring(7)}`,
         };
 
         // Create execution context with user context and writer
@@ -527,11 +556,17 @@ export class Agent<
           });
 
           // Emit tool model info by scanning tools from all agents
-          const allToolModelInfo: Record<string, { model?: string; provider?: string }> = {
+          const allToolModelInfo: Record<
+            string,
+            { model?: string; provider?: string }
+          > = {
             ...this.getToolModelInfo(),
           };
           for (const specialist of specialists) {
-            if ("getToolModelInfo" in specialist && typeof specialist.getToolModelInfo === "function") {
+            if (
+              "getToolModelInfo" in specialist &&
+              typeof specialist.getToolModelInfo === "function"
+            ) {
               Object.assign(allToolModelInfo, specialist.getToolModelInfo());
             }
           }
@@ -1147,6 +1182,7 @@ export class Agent<
               totalRounds: round,
             });
           }
+          writeAgentComplete(writer, { totalRounds: round });
 
           // Generate suggestions after orchestration completes
           const config = this.memory?.chats?.generateSuggestions;
@@ -1179,7 +1215,11 @@ export class Agent<
             const conversationContext = recentMessages
               .map((msg) => {
                 const role = msg.role === "user" ? "User" : "Assistant";
-                return `${role}: ${typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}`;
+                return `${role}: ${
+                  typeof msg.content === "string"
+                    ? msg.content
+                    : JSON.stringify(msg.content)
+                }`;
               })
               .join("\n\n");
 
@@ -1308,8 +1348,8 @@ Return only the title.
         typeof this.configuredTools === "function" && context
           ? this.configuredTools(context)
           : typeof this.configuredTools === "object"
-            ? this.configuredTools
-            : {};
+          ? this.configuredTools
+          : {};
 
       const toolNames = Object.keys(resolvedTools).filter(
         (name) => name !== "handoff_to_agent" && name !== "updateWorkingMemory",
