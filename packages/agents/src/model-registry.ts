@@ -5,26 +5,26 @@ import type { LanguageModel } from "ai";
  * @template TTier - String literal union of tier names (e.g. "reasoning" | "smart" | "fast" | "nano")
  */
 export interface ModelRegistryConfig<TTier extends string> {
-	/** Ordered list of tier names. Used for startup logging and validation. */
-	tiers: readonly TTier[];
-	/** Provider to use when MODEL_PROVIDER env var is not set or is invalid. */
-	defaultProvider: string;
-	/** Map of provider name → factory function that creates a LanguageModel from a model ID. */
-	providers: Record<string, (modelId: string) => LanguageModel>;
-	/**
-	 * Per-provider model profiles. Each profile maps tiers to model IDs.
-	 * Profiles can be partial — missing tiers fall back to the defaultProvider.
-	 */
-	profiles: Record<string, Partial<Record<TTier, string>>>;
+  /** Ordered list of tier names. Used for startup logging and validation. */
+  tiers: readonly TTier[];
+  /** Provider to use when MODEL_PROVIDER env var is not set or is invalid. */
+  defaultProvider: string;
+  /** Map of provider name → factory function that creates a LanguageModel from a model ID. */
+  providers: Record<string, (modelId: string) => LanguageModel>;
+  /**
+   * Per-provider model profiles. Each profile maps tiers to model IDs.
+   * Profiles can be partial — missing tiers fall back to the defaultProvider.
+   */
+  profiles: Record<string, Partial<Record<TTier, string>>>;
 }
 
 export interface ModelRegistry<TTier extends string> {
-	/** Resolve a tier to its configured LanguageModel using the active provider. */
-	model: (tier: TTier) => LanguageModel;
-	/** Resolve a tier from a specific provider's profile (for provider-executed tools). */
-	modelFor: (tier: TTier, provider: string) => LanguageModel;
-	/** The provider that was resolved at startup. */
-	activeProvider: string;
+  /** Resolve a tier to its configured LanguageModel using the active provider. */
+  model: (tier: TTier) => LanguageModel;
+  /** Resolve a tier from a specific provider's profile (for provider-executed tools). */
+  modelFor: (tier: TTier, provider: string) => LanguageModel;
+  /** The provider that was resolved at startup. */
+  activeProvider: string;
 }
 
 /**
@@ -47,7 +47,7 @@ export interface ModelRegistry<TTier extends string> {
  *   providers: { openai, anthropic },
  *   profiles: {
  *     openai: { reasoning: 'o3-mini', smart: 'gpt-4o', fast: 'gpt-4o-mini', nano: 'gpt-4.1-nano' },
- *     anthropic: { reasoning: 'claude-sonnet-4-20250514', smart: 'claude-sonnet-4-20250514', fast: 'claude-haiku-3-5-20241022', nano: 'claude-haiku-3-5-20241022' },
+ *     anthropic: { reasoning: 'claude-sonnet-4-20250514', smart: 'claude-sonnet-4-20250514', fast: 'claude-haiku-4-5-20251001', nano: 'claude-haiku-4-5-20251001' },
  *   },
  * });
  *
@@ -57,122 +57,126 @@ export interface ModelRegistry<TTier extends string> {
  * ```
  */
 export function createModelRegistry<TTier extends string>(
-	config: ModelRegistryConfig<TTier>,
+  config: ModelRegistryConfig<TTier>,
 ): ModelRegistry<TTier> {
-	const { tiers, defaultProvider, providers, profiles } = config;
+  const { tiers, defaultProvider, providers, profiles } = config;
 
-	function getActiveProvider(): string {
-		const env = process.env.MODEL_PROVIDER;
-		if (!env) return defaultProvider;
+  function getActiveProvider(): string {
+    const env = process.env.MODEL_PROVIDER;
+    if (!env) return defaultProvider;
 
-		if (!(env in profiles)) {
-			console.warn(
-				`[models] MODEL_PROVIDER="${env}" is not a known provider (${Object.keys(profiles).join(", ")}). Falling back to "${defaultProvider}".`,
-			);
-			return defaultProvider;
-		}
+    if (!(env in profiles)) {
+      console.warn(
+        `[models] MODEL_PROVIDER="${env}" is not a known provider (${Object.keys(
+          profiles,
+        ).join(", ")}). Falling back to "${defaultProvider}".`,
+      );
+      return defaultProvider;
+    }
 
-		if (!(env in providers)) {
-			console.warn(
-				`[models] MODEL_PROVIDER="${env}" has a profile but no factory (missing import?). Falling back to "${defaultProvider}".`,
-			);
-			return defaultProvider;
-		}
+    if (!(env in providers)) {
+      console.warn(
+        `[models] MODEL_PROVIDER="${env}" has a profile but no factory (missing import?). Falling back to "${defaultProvider}".`,
+      );
+      return defaultProvider;
+    }
 
-		return env;
-	}
+    return env;
+  }
 
-	function resolve(tier: TTier, active: string): LanguageModel {
-		const envKey = `MODEL_${tier.toUpperCase()}`;
-		const tierOverride = process.env[envKey];
+  function resolve(tier: TTier, active: string): LanguageModel {
+    const envKey = `MODEL_${tier.toUpperCase()}`;
+    const tierOverride = process.env[envKey];
 
-		if (tierOverride) {
-			const colonIdx = tierOverride.indexOf(":");
-			if (colonIdx === -1) {
-				console.warn(
-					`[models] ${envKey}="${tierOverride}" — expected "provider:model" format. Ignoring.`,
-				);
-			} else {
-				const provider = tierOverride.slice(0, colonIdx);
-				const modelId = tierOverride.slice(colonIdx + 1);
-				const factory = providers[provider];
-				if (!factory) {
-					console.warn(
-						`[models] ${envKey} references unknown provider "${provider}". Ignoring.`,
-					);
-				} else {
-					return factory(modelId);
-				}
-			}
-		}
+    if (tierOverride) {
+      const colonIdx = tierOverride.indexOf(":");
+      if (colonIdx === -1) {
+        console.warn(
+          `[models] ${envKey}="${tierOverride}" — expected "provider:model" format. Ignoring.`,
+        );
+      } else {
+        const provider = tierOverride.slice(0, colonIdx);
+        const modelId = tierOverride.slice(colonIdx + 1);
+        const factory = providers[provider];
+        if (!factory) {
+          console.warn(
+            `[models] ${envKey} references unknown provider "${provider}". Ignoring.`,
+          );
+        } else {
+          return factory(modelId);
+        }
+      }
+    }
 
-		const activeModelId = profiles[active]?.[tier];
-		if (activeModelId && providers[active]) {
-			return providers[active](activeModelId);
-		}
+    const activeModelId = profiles[active]?.[tier];
+    if (activeModelId && providers[active]) {
+      return providers[active](activeModelId);
+    }
 
-		const fallbackModelId = profiles[defaultProvider]?.[tier];
-		if (!fallbackModelId) {
-			throw new Error(
-				`[models] No model for tier "${tier}" in default provider "${defaultProvider}". This is a configuration bug.`,
-			);
-		}
+    const fallbackModelId = profiles[defaultProvider]?.[tier];
+    if (!fallbackModelId) {
+      throw new Error(
+        `[models] No model for tier "${tier}" in default provider "${defaultProvider}". This is a configuration bug.`,
+      );
+    }
 
-		console.warn(
-			`[models] Provider "${active}" has no "${tier}" model. Falling back to ${defaultProvider}:${fallbackModelId}`,
-		);
-		return providers[defaultProvider](fallbackModelId);
-	}
+    console.warn(
+      `[models] Provider "${active}" has no "${tier}" model. Falling back to ${defaultProvider}:${fallbackModelId}`,
+    );
+    return providers[defaultProvider](fallbackModelId);
+  }
 
-	const active = getActiveProvider();
-	const resolved = {} as Record<TTier, LanguageModel>;
-	const resolutionLog: string[] = [];
+  const active = getActiveProvider();
+  const resolved = {} as Record<TTier, LanguageModel>;
+  const resolutionLog: string[] = [];
 
-	for (const tier of tiers) {
-		resolved[tier] = resolve(tier, active);
+  for (const tier of tiers) {
+    resolved[tier] = resolve(tier, active);
 
-		const envKey = `MODEL_${tier.toUpperCase()}`;
-		const tierOverride = process.env[envKey];
-		if (tierOverride) {
-			resolutionLog.push(
-				`  ${String(tier).padEnd(10)} → ${tierOverride} (env override)`,
-			);
-		} else if (profiles[active]?.[tier]) {
-			resolutionLog.push(
-				`  ${String(tier).padEnd(10)} → ${active}:${profiles[active][tier]}`,
-			);
-		} else {
-			resolutionLog.push(
-				`  ${String(tier).padEnd(10)} → ${defaultProvider}:${profiles[defaultProvider][tier]} (fallback)`,
-			);
-		}
-	}
+    const envKey = `MODEL_${tier.toUpperCase()}`;
+    const tierOverride = process.env[envKey];
+    if (tierOverride) {
+      resolutionLog.push(
+        `  ${String(tier).padEnd(10)} → ${tierOverride} (env override)`,
+      );
+    } else if (profiles[active]?.[tier]) {
+      resolutionLog.push(
+        `  ${String(tier).padEnd(10)} → ${active}:${profiles[active][tier]}`,
+      );
+    } else {
+      resolutionLog.push(
+        `  ${String(tier).padEnd(10)} → ${defaultProvider}:${
+          profiles[defaultProvider][tier]
+        } (fallback)`,
+      );
+    }
+  }
 
-	console.info(
-		`[models] Active provider: ${active}\n${resolutionLog.join("\n")}`,
-	);
+  console.info(
+    `[models] Active provider: ${active}\n${resolutionLog.join("\n")}`,
+  );
 
-	function resolveFor(tier: TTier, provider: string): LanguageModel {
-		const factory = providers[provider];
-		if (!factory) {
-			throw new Error(
-				`[models] modelFor("${tier}", "${provider}") — provider "${provider}" has no factory.`,
-			);
-		}
+  function resolveFor(tier: TTier, provider: string): LanguageModel {
+    const factory = providers[provider];
+    if (!factory) {
+      throw new Error(
+        `[models] modelFor("${tier}", "${provider}") — provider "${provider}" has no factory.`,
+      );
+    }
 
-		const modelId = profiles[provider]?.[tier];
-		if (!modelId) {
-			throw new Error(
-				`[models] modelFor("${tier}", "${provider}") — provider "${provider}" has no "${tier}" tier.`,
-			);
-		}
+    const modelId = profiles[provider]?.[tier];
+    if (!modelId) {
+      throw new Error(
+        `[models] modelFor("${tier}", "${provider}") — provider "${provider}" has no "${tier}" tier.`,
+      );
+    }
 
-		return factory(modelId);
-	}
+    return factory(modelId);
+  }
 
-	return {
-		model: (tier: TTier) => resolved[tier],
-		modelFor: (tier: TTier, provider: string) => resolveFor(tier, provider),
-		activeProvider: active,
-	};
+  return {
+    model: (tier: TTier) => resolved[tier],
+    modelFor: (tier: TTier, provider: string) => resolveFor(tier, provider),
+    activeProvider: active,
+  };
 }

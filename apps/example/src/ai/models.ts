@@ -16,8 +16,8 @@ export const { model, modelFor, activeProvider } = createModelRegistry({
     anthropic: {
       reasoning: "claude-sonnet-4-20250514",
       smart: "claude-sonnet-4-20250514",
-      fast: "claude-haiku-3-5-20241022",
-      nano: "claude-haiku-3-5-20241022",
+      fast: "claude-haiku-4-5-20251001",
+      nano: "claude-haiku-4-5-20251001",
     },
   },
 });

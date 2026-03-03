@@ -12,19 +12,19 @@ import { openai } from "@ai-sdk/openai";
 
 export const customersAgent = createAgent({
   name: "customers",
-  model: openai("gpt-4o-mini"),   // hardcoded provider + model
+  model: openai("gpt-4o-mini"), // hardcoded provider + model
 });
 ```
 
 ### What breaks at scale
 
-| Problem | Impact |
-| ------- | ------ |
-| **Provider lock-in** | Switching to Anthropic requires updating imports and model strings in every file |
-| **No cost/performance tiering** | Agents pick arbitrary model strings instead of declaring capability needs |
-| **No central visibility** | Impossible to see what model each agent uses without grepping the codebase |
-| **No runtime flexibility** | Can't A/B test providers or switch models per environment |
-| **Doesn't scale** | 200+ agents means 200+ files to update for a provider switch |
+| Problem                         | Impact                                                                           |
+| ------------------------------- | -------------------------------------------------------------------------------- |
+| **Provider lock-in**            | Switching to Anthropic requires updating imports and model strings in every file |
+| **No cost/performance tiering** | Agents pick arbitrary model strings instead of declaring capability needs        |
+| **No central visibility**       | Impossible to see what model each agent uses without grepping the codebase       |
+| **No runtime flexibility**      | Can't A/B test providers or switch models per environment                        |
+| **Doesn't scale**               | 200+ agents means 200+ files to update for a provider switch                     |
 
 ---
 
@@ -75,7 +75,7 @@ interface ModelRegistry<TTier extends string> {
 }
 
 function createModelRegistry<TTier extends string>(
-  config: ModelRegistryConfig<TTier>
+  config: ModelRegistryConfig<TTier>,
 ): ModelRegistry<TTier> {
   const { tiers, defaultProvider, providers, profiles } = config;
 
@@ -86,7 +86,9 @@ function createModelRegistry<TTier extends string>(
     if (!(env in profiles)) {
       console.warn(
         `[models] MODEL_PROVIDER="${env}" is not a known provider ` +
-        `(${Object.keys(profiles).join(", ")}). Falling back to "${defaultProvider}".`
+          `(${Object.keys(profiles).join(
+            ", ",
+          )}). Falling back to "${defaultProvider}".`,
       );
       return defaultProvider;
     }
@@ -94,7 +96,7 @@ function createModelRegistry<TTier extends string>(
     if (!(env in providers)) {
       console.warn(
         `[models] MODEL_PROVIDER="${env}" has a profile but no factory ` +
-        `(missing import?). Falling back to "${defaultProvider}".`
+          `(missing import?). Falling back to "${defaultProvider}".`,
       );
       return defaultProvider;
     }
@@ -110,7 +112,7 @@ function createModelRegistry<TTier extends string>(
       if (colonIdx === -1) {
         console.warn(
           `[models] MODEL_${tier.toUpperCase()}="${tierOverride}" ` +
-          `— expected "provider:model" format. Ignoring.`
+            `— expected "provider:model" format. Ignoring.`,
         );
       } else {
         const provider = tierOverride.slice(0, colonIdx);
@@ -119,7 +121,7 @@ function createModelRegistry<TTier extends string>(
         if (!factory) {
           console.warn(
             `[models] MODEL_${tier.toUpperCase()} references unknown ` +
-            `provider "${provider}". Ignoring.`
+              `provider "${provider}". Ignoring.`,
           );
         } else {
           return factory(modelId);
@@ -138,13 +140,13 @@ function createModelRegistry<TTier extends string>(
     if (!fallbackModelId) {
       throw new Error(
         `[models] No model for tier "${tier}" in default provider ` +
-        `"${defaultProvider}". This is a configuration bug.`
+          `"${defaultProvider}". This is a configuration bug.`,
       );
     }
 
     console.warn(
       `[models] Provider "${active}" has no "${tier}" model. ` +
-      `Falling back to ${defaultProvider}:${fallbackModelId}`
+        `Falling back to ${defaultProvider}:${fallbackModelId}`,
     );
     return providers[defaultProvider](fallbackModelId);
   }
@@ -159,20 +161,24 @@ function createModelRegistry<TTier extends string>(
 
     const tierOverride = process.env[`MODEL_${tier.toUpperCase()}`];
     if (tierOverride) {
-      resolutionLog.push(`  ${String(tier).padEnd(10)} → ${tierOverride} (env override)`);
+      resolutionLog.push(
+        `  ${String(tier).padEnd(10)} → ${tierOverride} (env override)`,
+      );
     } else if (profiles[active]?.[tier]) {
       resolutionLog.push(
-        `  ${String(tier).padEnd(10)} → ${active}:${profiles[active][tier]}`
+        `  ${String(tier).padEnd(10)} → ${active}:${profiles[active][tier]}`,
       );
     } else {
       resolutionLog.push(
-        `  ${String(tier).padEnd(10)} → ${defaultProvider}:${profiles[defaultProvider][tier]} (fallback)`
+        `  ${String(tier).padEnd(10)} → ${defaultProvider}:${
+          profiles[defaultProvider][tier]
+        } (fallback)`,
       );
     }
   }
 
   console.info(
-    `[models] Active provider: ${active}\n${resolutionLog.join("\n")}`
+    `[models] Active provider: ${active}\n${resolutionLog.join("\n")}`,
   );
 
   // Provider-targeted lookup for provider-executed tools
@@ -180,14 +186,14 @@ function createModelRegistry<TTier extends string>(
     const factory = providers[provider];
     if (!factory) {
       throw new Error(
-        `[models] modelFor("${tier}", "${provider}") — provider "${provider}" has no factory.`
+        `[models] modelFor("${tier}", "${provider}") — provider "${provider}" has no factory.`,
       );
     }
 
     const modelId = profiles[provider]?.[tier];
     if (!modelId) {
       throw new Error(
-        `[models] modelFor("${tier}", "${provider}") — provider "${provider}" has no "${tier}" tier.`
+        `[models] modelFor("${tier}", "${provider}") — provider "${provider}" has no "${tier}" tier.`,
       );
     }
 
@@ -234,15 +240,15 @@ export const { model, modelFor } = createModelRegistry({
   profiles: {
     openai: {
       reasoning: "o3-mini",
-      smart:     "gpt-4o",
-      fast:      "gpt-4o-mini",
-      nano:      "gpt-4.1-nano",
+      smart: "gpt-4o",
+      fast: "gpt-4o-mini",
+      nano: "gpt-4.1-nano",
     },
     anthropic: {
       reasoning: "claude-sonnet-4-20250514",
-      smart:     "claude-sonnet-4-20250514",
-      fast:      "claude-haiku-3-5-20241022",
-      nano:      "claude-haiku-3-5-20241022",
+      smart: "claude-sonnet-4-20250514",
+      fast: "claude-haiku-4-5-20251001",
+      nano: "claude-haiku-4-5-20251001",
     },
   },
 });
@@ -250,10 +256,10 @@ export const { model, modelFor } = createModelRegistry({
 
 ### `model()` vs `modelFor()` — when to use which
 
-| Function | Resolves from | Use for |
-| -------- | ------------- | ------- |
-| `model("fast")` | Active provider (from `MODEL_PROVIDER` env) | Agents, tools with no provider coupling |
-| `modelFor("fast", "openai")` | Specified provider's profile | Provider-executed tools (web search, code execution) that require a model from the same provider |
+| Function                     | Resolves from                               | Use for                                                                                          |
+| ---------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `model("fast")`              | Active provider (from `MODEL_PROVIDER` env) | Agents, tools with no provider coupling                                                          |
+| `modelFor("fast", "openai")` | Specified provider's profile                | Provider-executed tools (web search, code execution) that require a model from the same provider |
 
 `model()` is the common path — used by all agents. `modelFor()` exists specifically for provider-executed tools where the model and tool must be from the same provider (see [Provider-Executed Tools](#provider-executed-tools-web-search) below).
 
@@ -267,8 +273,8 @@ import { model, type ModelTier } from "../models";
 
 interface AgentConfig<TContext extends Record<string, unknown>> {
   name: string;
-  tier?: ModelTier;          // declare capability need
-  model?: LanguageModel;     // optional: direct override (escape hatch)
+  tier?: ModelTier; // declare capability need
+  model?: LanguageModel; // optional: direct override (escape hatch)
   instructions: string | ((context: TContext) => string);
   tools?: Record<string, Tool> | ((context: TContext) => Record<string, Tool>);
   handoffs?: Array<any>;
@@ -283,15 +289,15 @@ export const createAgent = (config: AgentConfig<AppContext>) => {
   return new Agent({
     modelSettings: { parallel_tool_calls: true },
     ...config,
-    model: config.model ?? model(config.tier ?? "fast"),  // resolve here
+    model: config.model ?? model(config.tier ?? "fast"), // resolve here
     memory: {
       // ...
       chats: {
         generateTitle: {
-          model: model("nano"),       // was: openai("gpt-4.1-nano")
+          model: model("nano"), // was: openai("gpt-4.1-nano")
         },
         generateSuggestions: {
-          model: model("nano"),       // was: openai("gpt-4.1-nano")
+          model: model("nano"), // was: openai("gpt-4.1-nano")
         },
       },
     },
@@ -313,7 +319,9 @@ export const customersAgent = createAgent({
   model: openai("gpt-4o-mini"),
   temperature: 0.3,
   instructions: (ctx) => `...`,
-  tools: { /* ... */ },
+  tools: {
+    /* ... */
+  },
   maxTurns: 5,
 });
 ```
@@ -329,7 +337,9 @@ export const customersAgent = createAgent({
   tier: "fast",
   temperature: 0.3,
   instructions: (ctx) => `...`,
-  tools: { /* ... */ },
+  tools: {
+    /* ... */
+  },
   maxTurns: 5,
 });
 ```
@@ -346,7 +356,7 @@ import { createAgent } from "./shared";
 
 export const specialAgent = createAgent({
   name: "special",
-  model: openai("ft:gpt-4o:my-org:custom:abc123"),  // bypasses registry
+  model: openai("ft:gpt-4o:my-org:custom:abc123"), // bypasses registry
   instructions: (ctx) => `...`,
 });
 ```
@@ -354,16 +364,16 @@ export const specialAgent = createAgent({
 Resolution order in `createAgent`:
 
 ```typescript
-config.model ?? model(config.tier ?? "fast")
+config.model ?? model(config.tier ?? "fast");
 //   ↑ wins if set     ↑ tier lookup     ↑ default tier
 ```
 
 ### Three usage patterns
 
-| Pattern | When | Example |
-| ------- | ---- | ------- |
-| `tier: "fast"` | 99% of agents | `createAgent({ tier: "fast", ... })` |
-| No tier, no model | Uses default tier ("fast") | `createAgent({ name: "simple", ... })` |
+| Pattern                  | When                                              | Example                                         |
+| ------------------------ | ------------------------------------------------- | ----------------------------------------------- |
+| `tier: "fast"`           | 99% of agents                                     | `createAgent({ tier: "fast", ... })`            |
+| No tier, no model        | Uses default tier ("fast")                        | `createAgent({ name: "simple", ... })`          |
 | `model: provider("...")` | Escape hatch for fine-tuned / experimental models | `createAgent({ model: openai("ft:..."), ... })` |
 
 ---
@@ -376,10 +386,10 @@ This creates a different challenge from agents: when `MODEL_PROVIDER=anthropic`,
 
 ### The constraint
 
-| Tool Type | Model coupling | Example |
-| --------- | -------------- | ------- |
-| Regular tools (CRUD, analytics) | Provider-agnostic — `model("fast")` works | `tool({ execute: ... })` |
-| Provider-executed tools | Must match provider — model and tool from same provider | `openai.tools.webSearch()`, `anthropic.tools.webSearch_20250305()` |
+| Tool Type                       | Model coupling                                          | Example                                                            |
+| ------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ |
+| Regular tools (CRUD, analytics) | Provider-agnostic — `model("fast")` works               | `tool({ execute: ... })`                                           |
+| Provider-executed tools         | Must match provider — model and tool from same provider | `openai.tools.webSearch()`, `anthropic.tools.webSearch_20250305()` |
 
 ### Solution: Web Search Factory with `modelFor()`
 
@@ -435,7 +445,7 @@ export const createOpenAIWebSearch: WebSearchFactory = () =>
     execute: async ({ query }, executionOptions) => {
       const appContext = executionOptions.experimental_context as AppContext;
       const result = await generateText({
-        model: modelFor("fast", "openai"),  // fast tier, always from OpenAI profile
+        model: modelFor("fast", "openai"), // fast tier, always from OpenAI profile
         prompt: `...`,
         stopWhen: stepCountIs(1),
         tools: {
@@ -476,7 +486,7 @@ export const createAnthropicWebSearch: WebSearchFactory = () =>
     execute: async ({ query }, executionOptions) => {
       const appContext = executionOptions.experimental_context as AppContext;
       const result = await generateText({
-        model: modelFor("fast", "anthropic"),  // fast tier, always from Anthropic profile
+        model: modelFor("fast", "anthropic"), // fast tier, always from Anthropic profile
         prompt: `...`,
         stopWhen: stepCountIs(1),
         tools: {
@@ -517,7 +527,7 @@ function resolveWebSearchProvider(): string {
   if (override) {
     if (override in implementations) return override;
     console.warn(
-      `[web-search] WEB_SEARCH_PROVIDER="${override}" has no implementation. Ignoring.`
+      `[web-search] WEB_SEARCH_PROVIDER="${override}" has no implementation. Ignoring.`,
     );
   }
 
@@ -547,20 +557,20 @@ WEB_SEARCH_DEFAULT                ("openai")
 
 #### How it plays out
 
-| `MODEL_PROVIDER` | `WEB_SEARCH_PROVIDER` | Anthropic impl exists? | Web search uses | Agents use |
-|---|---|---|---|---|
-| not set | not set | no | OpenAI (default) | OpenAI |
-| `anthropic` | not set | no | OpenAI (fallback) | Anthropic |
-| `anthropic` | not set | **yes** | Anthropic (follows model provider) | Anthropic |
-| `anthropic` | `openai` | yes | OpenAI (explicit override) | Anthropic |
-| `openai` | `anthropic` | yes | Anthropic (explicit override) | OpenAI |
+| `MODEL_PROVIDER` | `WEB_SEARCH_PROVIDER` | Anthropic impl exists? | Web search uses                    | Agents use |
+| ---------------- | --------------------- | ---------------------- | ---------------------------------- | ---------- |
+| not set          | not set               | no                     | OpenAI (default)                   | OpenAI     |
+| `anthropic`      | not set               | no                     | OpenAI (fallback)                  | Anthropic  |
+| `anthropic`      | not set               | **yes**                | Anthropic (follows model provider) | Anthropic  |
+| `anthropic`      | `openai`              | yes                    | OpenAI (explicit override)         | Anthropic  |
+| `openai`         | `anthropic`           | yes                    | Anthropic (explicit override)      | OpenAI     |
 
 #### Why `modelFor()` instead of hardcoding models
 
-| Approach | What happens when OpenAI's "fast" changes from `gpt-4o-mini` to `gpt-4.1-mini` |
-|----------|---|
-| Hardcoded `openai("gpt-4o-mini")` | Must update `openai-web-search.ts` manually |
-| `modelFor("fast", "openai")` | Automatically picks up the new model from the registry profile |
+| Approach                          | What happens when OpenAI's "fast" changes from `gpt-4o-mini` to `gpt-4.1-mini` |
+| --------------------------------- | ------------------------------------------------------------------------------ |
+| Hardcoded `openai("gpt-4o-mini")` | Must update `openai-web-search.ts` manually                                    |
+| `modelFor("fast", "openai")`      | Automatically picks up the new model from the registry profile                 |
 
 The web search implementation stays coupled to its **provider** (because it uses provider-specific tools like `openai.tools.webSearch()`), but decoupled from **which specific model** within that provider. The registry profile remains the single source of truth for model choices.
 
@@ -641,8 +651,8 @@ The registry logs its resolution on startup for full visibility.
 [models] Active provider: anthropic
   reasoning  → anthropic:claude-sonnet-4-20250514
   smart      → anthropic:claude-sonnet-4-20250514
-  fast       → anthropic:claude-haiku-3-5-20241022
-  nano       → anthropic:claude-haiku-3-5-20241022
+  fast       → anthropic:claude-haiku-4-5-20251001
+  nano       → anthropic:claude-haiku-4-5-20251001
 ```
 
 **`MODEL_PROVIDER=anthropic` with `MODEL_REASONING=openai:o3-mini`:**
@@ -651,8 +661,8 @@ The registry logs its resolution on startup for full visibility.
 [models] Active provider: anthropic
   reasoning  → openai:o3-mini (env override)
   smart      → anthropic:claude-sonnet-4-20250514
-  fast       → anthropic:claude-haiku-3-5-20241022
-  nano       → anthropic:claude-haiku-3-5-20241022
+  fast       → anthropic:claude-haiku-4-5-20251001
+  nano       → anthropic:claude-haiku-4-5-20251001
 ```
 
 **Provider with missing tier (e.g. future `google` profile without `reasoning`):**
@@ -683,25 +693,25 @@ The registry logs its resolution on startup for full visibility.
 
 ### Model registry
 
-| Scenario | Behavior |
-| -------- | -------- |
-| Unknown `MODEL_PROVIDER` | Warn + fall back to `defaultProvider` |
-| Provider profile exists but no factory | Warn + fall back to `defaultProvider` |
-| Per-tier env var bad format | Warn + skip to Layer 2 |
-| Per-tier env var unknown provider | Warn + skip to Layer 2 |
-| Active provider missing a tier | Warn + fall back to `defaultProvider` for that tier |
-| Default provider missing a tier | Hard `throw` — this is a configuration bug |
-| `modelFor()` unknown provider | Hard `throw` — caller explicitly requested a non-existent provider |
-| `modelFor()` provider missing tier | Hard `throw` — caller explicitly requested a missing tier |
-| No env vars at all | Use `defaultProvider` profile silently |
+| Scenario                               | Behavior                                                           |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| Unknown `MODEL_PROVIDER`               | Warn + fall back to `defaultProvider`                              |
+| Provider profile exists but no factory | Warn + fall back to `defaultProvider`                              |
+| Per-tier env var bad format            | Warn + skip to Layer 2                                             |
+| Per-tier env var unknown provider      | Warn + skip to Layer 2                                             |
+| Active provider missing a tier         | Warn + fall back to `defaultProvider` for that tier                |
+| Default provider missing a tier        | Hard `throw` — this is a configuration bug                         |
+| `modelFor()` unknown provider          | Hard `throw` — caller explicitly requested a non-existent provider |
+| `modelFor()` provider missing tier     | Hard `throw` — caller explicitly requested a missing tier          |
+| No env vars at all                     | Use `defaultProvider` profile silently                             |
 
 ### Web search
 
-| Scenario | Behavior |
-| -------- | -------- |
-| `WEB_SEARCH_PROVIDER` set to unknown | Warn + skip to Layer 2 |
+| Scenario                                          | Behavior                                     |
+| ------------------------------------------------- | -------------------------------------------- |
+| `WEB_SEARCH_PROVIDER` set to unknown              | Warn + skip to Layer 2                       |
 | `MODEL_PROVIDER` has no web search implementation | Fall back to `WEB_SEARCH_DEFAULT` ("openai") |
-| No env vars at all | Use `WEB_SEARCH_DEFAULT` ("openai") silently |
+| No env vars at all                                | Use `WEB_SEARCH_DEFAULT` ("openai") silently |
 
 ---
 
@@ -709,46 +719,46 @@ The registry logs its resolution on startup for full visibility.
 
 ### Current model usage
 
-| File | Current Model | Target Tier |
-| ---- | ------------- | ----------- |
-| `agents/triage.ts` | `openai("gpt-4o-mini")` | `fast` |
-| `agents/general.ts` | `openai("gpt-4o")` | `smart` |
-| `agents/analytics.ts` | `openai("gpt-4o")` | `smart` |
-| `agents/research.ts` | `openai("gpt-4o")` | `smart` |
-| `agents/reports.ts` | `openai("gpt-4o-mini")` | `fast` |
-| `agents/operations.ts` | `openai("gpt-4o-mini")` | `fast` |
-| `agents/transactions.ts` | `openai("gpt-4o-mini")` | `fast` |
-| `agents/invoices.ts` | `openai("gpt-4o-mini")` | `fast` |
-| `agents/customers.ts` | `openai("gpt-4o-mini")` | `fast` |
-| `agents/time-tracking.ts` | `openai("gpt-4o-mini")` | `fast` |
-| `agents/shared.ts` (title) | `openai("gpt-4.1-nano")` | `nano` |
-| `agents/shared.ts` (suggestions) | `openai("gpt-4.1-nano")` | `nano` |
-| `tools/search/openai-web-search.ts` | `openai("gpt-4o-mini")` | `modelFor("fast", "openai")` |
+| File                                | Current Model            | Target Tier                  |
+| ----------------------------------- | ------------------------ | ---------------------------- |
+| `agents/triage.ts`                  | `openai("gpt-4o-mini")`  | `fast`                       |
+| `agents/general.ts`                 | `openai("gpt-4o")`       | `smart`                      |
+| `agents/analytics.ts`               | `openai("gpt-4o")`       | `smart`                      |
+| `agents/research.ts`                | `openai("gpt-4o")`       | `smart`                      |
+| `agents/reports.ts`                 | `openai("gpt-4o-mini")`  | `fast`                       |
+| `agents/operations.ts`              | `openai("gpt-4o-mini")`  | `fast`                       |
+| `agents/transactions.ts`            | `openai("gpt-4o-mini")`  | `fast`                       |
+| `agents/invoices.ts`                | `openai("gpt-4o-mini")`  | `fast`                       |
+| `agents/customers.ts`               | `openai("gpt-4o-mini")`  | `fast`                       |
+| `agents/time-tracking.ts`           | `openai("gpt-4o-mini")`  | `fast`                       |
+| `agents/shared.ts` (title)          | `openai("gpt-4.1-nano")` | `nano`                       |
+| `agents/shared.ts` (suggestions)    | `openai("gpt-4.1-nano")` | `nano`                       |
+| `tools/search/openai-web-search.ts` | `openai("gpt-4o-mini")`  | `modelFor("fast", "openai")` |
 
 ### Files to change
 
-| File | Change |
-| ---- | ------ |
-| **Package: `@ai-sdk-tools/agents`** | |
-| `packages/agents/src/model-registry.ts` | **New** — `createModelRegistry()` factory, types |
-| `packages/agents/src/index.ts` | Export `createModelRegistry` and related types |
-| **App: `apps/example`** | |
-| `src/ai/models.ts` | **New** — registry configuration with providers and profiles |
-| `src/ai/agents/shared.ts` | Replace `openai` import. Add `tier` to `AgentConfig`. Update `createAgent` resolution. Replace `openai("gpt-4.1-nano")` with `model("nano")`. |
-| `src/ai/agents/triage.ts` | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"` |
-| `src/ai/agents/general.ts` | Remove `openai` import. `model: openai("gpt-4o")` → `tier: "smart"` |
-| `src/ai/agents/analytics.ts` | Remove `openai` import. `model: openai("gpt-4o")` → `tier: "smart"` |
-| `src/ai/agents/research.ts` | Remove `openai` import. `model: openai("gpt-4o")` → `tier: "smart"` |
-| `src/ai/agents/reports.ts` | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"` |
-| `src/ai/agents/operations.ts` | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"` |
-| `src/ai/agents/transactions.ts` | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"` |
-| `src/ai/agents/invoices.ts` | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"` |
-| `src/ai/agents/customers.ts` | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"` |
-| `src/ai/agents/time-tracking.ts` | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"` |
-| `src/ai/tools/search/types.ts` | **New** — shared `WebSearchResult` type and `WebSearchFactory` type |
-| `src/ai/tools/search/openai-web-search.ts` | Refactor to factory: export `createOpenAIWebSearch`. Use `modelFor("fast", "openai")` instead of `openai("gpt-4o-mini")`. |
-| `src/ai/tools/search/index.ts` | Replace re-export with web search factory: resolve provider, export `webSearchTool` |
-| `.env.local.example` | Add `MODEL_PROVIDER`, `MODEL_*`, and `WEB_SEARCH_PROVIDER` examples |
+| File                                       | Change                                                                                                                                        |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Package: `@ai-sdk-tools/agents`**        |                                                                                                                                               |
+| `packages/agents/src/model-registry.ts`    | **New** — `createModelRegistry()` factory, types                                                                                              |
+| `packages/agents/src/index.ts`             | Export `createModelRegistry` and related types                                                                                                |
+| **App: `apps/example`**                    |                                                                                                                                               |
+| `src/ai/models.ts`                         | **New** — registry configuration with providers and profiles                                                                                  |
+| `src/ai/agents/shared.ts`                  | Replace `openai` import. Add `tier` to `AgentConfig`. Update `createAgent` resolution. Replace `openai("gpt-4.1-nano")` with `model("nano")`. |
+| `src/ai/agents/triage.ts`                  | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"`                                                                       |
+| `src/ai/agents/general.ts`                 | Remove `openai` import. `model: openai("gpt-4o")` → `tier: "smart"`                                                                           |
+| `src/ai/agents/analytics.ts`               | Remove `openai` import. `model: openai("gpt-4o")` → `tier: "smart"`                                                                           |
+| `src/ai/agents/research.ts`                | Remove `openai` import. `model: openai("gpt-4o")` → `tier: "smart"`                                                                           |
+| `src/ai/agents/reports.ts`                 | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"`                                                                       |
+| `src/ai/agents/operations.ts`              | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"`                                                                       |
+| `src/ai/agents/transactions.ts`            | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"`                                                                       |
+| `src/ai/agents/invoices.ts`                | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"`                                                                       |
+| `src/ai/agents/customers.ts`               | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"`                                                                       |
+| `src/ai/agents/time-tracking.ts`           | Remove `openai` import. `model: openai("gpt-4o-mini")` → `tier: "fast"`                                                                       |
+| `src/ai/tools/search/types.ts`             | **New** — shared `WebSearchResult` type and `WebSearchFactory` type                                                                           |
+| `src/ai/tools/search/openai-web-search.ts` | Refactor to factory: export `createOpenAIWebSearch`. Use `modelFor("fast", "openai")` instead of `openai("gpt-4o-mini")`.                     |
+| `src/ai/tools/search/index.ts`             | Replace re-export with web search factory: resolve provider, export `webSearchTool`                                                           |
+| `.env.local.example`                       | Add `MODEL_PROVIDER`, `MODEL_*`, and `WEB_SEARCH_PROVIDER` examples                                                                           |
 
 **Total: 3 new files (1 package, 2 app), 12 modified app files, 1 package index update, 1 env example update.**
 
@@ -770,8 +780,8 @@ export const { model, modelFor } = createModelRegistry({
     // ...existing profiles...
     google: {
       smart: "gemini-2.5-pro",
-      fast:  "gemini-2.5-flash",
-      nano:  "gemini-2.5-flash",
+      fast: "gemini-2.5-flash",
+      nano: "gemini-2.5-flash",
       // reasoning intentionally omitted — falls back to defaultProvider
     },
   },
