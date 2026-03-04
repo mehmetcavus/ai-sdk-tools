@@ -138,21 +138,10 @@ export class Agent<
       ...otherModelSettings
     } = config.modelSettings || {};
 
-    logger.debug(`[${config.name}] Constructor modelSettings`, {
-      raw: config.modelSettings,
-      parallel_tool_calls,
-      userProviderOptions,
-      otherModelSettings,
-    });
-
     const providerOptions = this.buildProviderOptions(
       parallel_tool_calls as boolean | undefined,
       userProviderOptions,
     );
-
-    logger.debug(`[${config.name}] Constructor providerOptions`, {
-      providerOptions,
-    });
 
     this.aiAgent = new AISDKAgent<never, Record<string, Tool>>({
       model: config.model,
@@ -379,21 +368,10 @@ export class Agent<
       ? { type: "tool" as const, toolName: toolChoice }
       : configuredToolChoice;
 
-    logger.debug(`[${this.name}] stream() modelSettings`, {
-      raw: this.modelSettings,
-      streamParallelToolCalls,
-      streamUserProviderOptions,
-      otherSettings,
-    });
-
     const streamProviderOptions = this.buildProviderOptions(
       streamParallelToolCalls as boolean | undefined,
       streamUserProviderOptions,
     );
-
-    logger.debug(`[${this.name}] stream() providerOptions`, {
-      streamProviderOptions,
-    });
 
     const additionalOptions: Record<string, unknown> = {
       instructions: systemPrompt,
@@ -404,12 +382,6 @@ export class Agent<
         ? { providerOptions: streamProviderOptions }
         : {}),
     };
-
-    logger.debug(`[${this.name}] stream() additionalOptions keys`, {
-      keys: Object.keys(additionalOptions),
-      hasProviderOptions: "providerOptions" in additionalOptions,
-      providerOptions: additionalOptions.providerOptions,
-    });
 
     if (executionContext) {
       additionalOptions.experimental_context = executionContext;
