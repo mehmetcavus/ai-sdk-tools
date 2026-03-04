@@ -101,9 +101,9 @@ export function ChatInterface() {
   return (
     <div className="relative flex size-full overflow-hidden min-h-screen">
       <ChatSync chatId={chatId} />
-      {isHome && (
+      <div className={cn(!isHome && "hidden")}>
         <Header onToggleHistory={() => setIsHistoryOpen(!isHistoryOpen)} />
-      )}
+      </div>
 
       {/* Chat History Sidebar */}
       {isHistoryOpen && (
@@ -125,59 +125,48 @@ export function ChatInterface() {
       <ChatArtifactLayout hasMessages={hasMessages}>
         {({ isCanvasOpen }) => (
           <>
-            {hasMessages ? (
-              <div className="absolute inset-0 flex flex-col">
-                <div
-                  className={cn(
-                    "fixed left-0 z-50 shrink-0 transition-all duration-300 ease-in-out",
-                    isCanvasOpen ? "right-[600px]" : "right-0",
-                  )}
-                >
-                  <div className="bg-background/80 dark:bg-background/50 backdrop-blur-sm p-2 pt-6">
-                    <ChatHeader />
-                  </div>
+            <div
+              className={cn(
+                !hasMessages && "hidden",
+                "absolute inset-0 flex flex-col",
+              )}
+            >
+              <div
+                className={cn(
+                  "fixed left-0 z-50 shrink-0 transition-all duration-300 ease-in-out",
+                  isCanvasOpen ? "right-[600px]" : "right-0",
+                )}
+              >
+                <div className="bg-background/80 dark:bg-background/50 backdrop-blur-sm p-2 pt-6">
+                  <ChatHeader />
                 </div>
-                <Conversation>
-                  <ConversationContent className="pb-48 pt-14">
-                    <div className="max-w-2xl mx-auto w-full">
-                      <ChatMessages
-                        messages={messages}
-                        isStreaming={
-                          status === "streaming" || status === "submitted"
-                        }
-                      />
-                      <ChatStatusIndicators
-                        agentStatus={agentStatus}
-                        currentToolCall={currentToolCall}
-                        status={status}
-                      />
-                    </div>
-                  </ConversationContent>
-                  <ConversationScrollButton
-                    className={cn(hasSuggestions ? "bottom-52" : "bottom-42")}
-                  />
-                </Conversation>
               </div>
-            ) : (
-              <EmptyStateHeading />
-            )}
+              <Conversation>
+                <ConversationContent className="pb-48 pt-14">
+                  <div className="max-w-2xl mx-auto w-full">
+                    <ChatMessages
+                      messages={messages}
+                      isStreaming={
+                        status === "streaming" || status === "submitted"
+                      }
+                    />
+                    <ChatStatusIndicators
+                      agentStatus={agentStatus}
+                      currentToolCall={currentToolCall}
+                      status={status}
+                    />
+                  </div>
+                </ConversationContent>
+                <ConversationScrollButton
+                  className={cn(hasSuggestions ? "bottom-52" : "bottom-42")}
+                />
+              </Conversation>
+            </div>
 
-            {/*
-             * HYDRATION FIX: Input area must always be at Fragment child index 1.
-             *
-             * Previously, ChatInput was rendered inside <EmptyState> (depth ~8)
-             * when !hasMessages, but at depth ~5 when hasMessages. This tree
-             * position shift caused React.useId() in Radix Popover/DropdownMenu
-             * to produce different IDs on SSR vs client hydration, leading to
-             * intermittent aria-controls/id attribute mismatches.
-             *
-             * By always rendering chatInput at the same sibling position (child 1
-             * of this Fragment), the fiber tree is stable regardless of hasMessages.
-             *
-             * NOTE: Chrome browser extensions (Grammarly, password managers, etc.)
-             * may still inject DOM elements before hydration, causing unrelated
-             * data-attribute mismatches that are outside our control.
-             */}
+            <div className={cn(hasMessages && "hidden")}>
+              <EmptyStateHeading />
+            </div>
+
             <div
               className={cn(
                 hasMessages
@@ -193,16 +182,13 @@ export function ChatInterface() {
                   hasMessages && "pb-4 max-w-2xl mx-auto",
                 )}
               >
-                {/* Always rendered (hidden via CSS) to keep fiber tree stable */}
                 <div className={cn(!hasMessages && "hidden")}>
                   <SuggestedPrompts delay={1} />
                 </div>
                 {chatInput}
-                {!hasMessages && (
-                  <div className="mt-8">
-                    <SuggestionPills />
-                  </div>
-                )}
+                <div className={cn(hasMessages && "hidden", "mt-8")}>
+                  <SuggestionPills />
+                </div>
               </div>
             </div>
           </>
