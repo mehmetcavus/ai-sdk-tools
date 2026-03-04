@@ -99,7 +99,9 @@ export function ChatInterface() {
   );
 
   return (
-    <div className="relative flex size-full overflow-hidden min-h-screen">
+    <div
+      className="relative flex size-full overflow-hidden min-h-screen"
+    >
       <ChatSync chatId={chatId} />
       <div className={cn(!isHome && "hidden")}>
         <Header onToggleHistory={() => setIsHistoryOpen(!isHistoryOpen)} />
@@ -128,8 +130,9 @@ export function ChatInterface() {
             <div
               className={cn(
                 !hasMessages && "hidden",
-                "absolute inset-0 flex flex-col",
+                "absolute inset-x-0 top-0 flex flex-col overflow-hidden transition-[bottom] duration-300 ease-in-out",
               )}
+              style={{ bottom: "var(--ai-devtools-height, 0px)" }}
             >
               <div
                 className={cn(
@@ -170,11 +173,16 @@ export function ChatInterface() {
             <div
               className={cn(
                 hasMessages
-                  ? "fixed bottom-0 left-0 z-50 transition-all duration-300 ease-in-out"
+                  ? "fixed left-0 z-50 transition-all duration-300 ease-in-out"
                   : "w-full max-w-2xl px-4",
                 hasMessages &&
                   (isCanvasOpen ? "right-[600px]" : "right-0"),
               )}
+              style={
+                hasMessages
+                  ? { bottom: "var(--ai-devtools-height, 0px)" }
+                  : undefined
+              }
             >
               <div
                 className={cn(

@@ -350,6 +350,24 @@ export function DevtoolsPanel({
     }
   }, [events.length]);
 
+  // Broadcast panel dimensions via CSS custom properties so the host app
+  // can offset fixed-position elements (e.g. chat input) to avoid overlap.
+  React.useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty(
+      "--ai-devtools-height",
+      config.position === "bottom" ? `${panelHeight}px` : "0px",
+    );
+    root.style.setProperty(
+      "--ai-devtools-width",
+      config.position === "right" ? `${panelWidth}px` : "0px",
+    );
+    return () => {
+      root.style.removeProperty("--ai-devtools-height");
+      root.style.removeProperty("--ai-devtools-width");
+    };
+  }, [panelHeight, panelWidth, config.position]);
+
   return (
     <div
       ref={panelRef}
