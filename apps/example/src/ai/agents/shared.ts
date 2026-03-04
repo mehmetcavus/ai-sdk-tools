@@ -178,7 +178,10 @@ export const createAgent = (config: AgentConfig<AppContext>) => {
     modelInfo: config.model
       ? undefined
       : {
-          model: typeof resolvedModel === "string" ? resolvedModel : resolvedModel.modelId,
+          model:
+            typeof resolvedModel === "string"
+              ? resolvedModel
+              : resolvedModel.modelId,
           provider: activeProvider,
           tier: resolvedTier,
         },

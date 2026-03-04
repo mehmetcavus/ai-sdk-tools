@@ -541,6 +541,48 @@ Coordinate research and financial analysis for comprehensive answers.`,
 // 3. Financial Analyst provides comprehensive affordability analysis
 ```
 
+### Parallel Tool Calls
+
+Control whether the model can request multiple tool calls in a single response. Set via `parallel_tool_calls` in `modelSettings` — the agent automatically maps this to the correct provider-specific option (`parallelToolCalls` for OpenAI, `disableParallelToolUse` for Anthropic).
+
+```typescript
+const agent = new Agent({
+  name: "Assistant",
+  model: openai("gpt-4o"),
+  instructions: "...",
+  modelSettings: {
+    parallel_tool_calls: true,  // allow parallel (default behavior)
+  },
+});
+```
+
+**How it works — `parallel_tool_calls: true` (parallel):**
+
+```
+LLM call
+  → tool_call_1 started       (returned together in one response)
+  → tool_call_2 started       ← 0.3s later, same step
+  → tool_call_1 captured
+  → tool_call_2 captured      ← both complete ~simultaneously
+LLM call (with both results)
+  → final response
+```
+
+**How it works — `parallel_tool_calls: false` (sequential):**
+
+```
+LLM call
+  → tool_call_1 started       (only one tool call per response)
+  → tool_call_1 captured
+LLM call (with result)         ← model sees first result, decides next
+  → tool_call_2 started
+  → tool_call_2 captured
+LLM call (with both results)
+  → final response
+```
+
+Sequential mode gives the model a chance to use the first result before deciding the next tool call, at the cost of an extra LLM round-trip.
+
 ## API Reference
 
 ### Agent Class
@@ -558,6 +600,7 @@ class Agent<TContext extends Record<string, unknown> = Record<string, unknown>>
 - `handoffs?: Agent[]` - Agents this agent can hand off to
 - `maxTurns?: number` - Maximum tool call iterations (default: 10)
 - `temperature?: number` - Model temperature
+- `modelSettings?: Record<string, unknown>` - Additional model settings (e.g. `parallel_tool_calls`)
 - `matchOn?: (string | RegExp)[] | ((message: string) => boolean)` - Routing patterns
 - `onEvent?: (event: AgentEvent) => void` - Lifecycle event handler
 - `inputGuardrails?: InputGuardrail[]` - Pre-execution validation

@@ -1,3 +1,5 @@
+import type { AnthropicLanguageModelOptions } from "@ai-sdk/anthropic";
+import type { OpenAILanguageModelChatOptions } from "@ai-sdk/openai";
 import { createLogger } from "@ai-sdk-tools/debug";
 import {
   DEFAULT_TEMPLATE,
@@ -128,8 +130,29 @@ export class Agent<
     this.configuredTools = config.tools || {};
 
     // Create AI SDK Agent with minimal config (system prompt overridden per-request in stream())
-    // Extract toolChoice from modelSettings (needs to be a top-level param per AI SDK)
-    const { toolChoice, ...otherModelSettings } = config.modelSettings || {};
+    // Extract toolChoice and parallel_tool_calls from modelSettings
+    const {
+      toolChoice,
+      parallel_tool_calls,
+      providerOptions: userProviderOptions,
+      ...otherModelSettings
+    } = config.modelSettings || {};
+
+    logger.debug(`[${config.name}] Constructor modelSettings`, {
+      raw: config.modelSettings,
+      parallel_tool_calls,
+      userProviderOptions,
+      otherModelSettings,
+    });
+
+    const providerOptions = this.buildProviderOptions(
+      parallel_tool_calls as boolean | undefined,
+      userProviderOptions,
+    );
+
+    logger.debug(`[${config.name}] Constructor providerOptions`, {
+      providerOptions,
+    });
 
     this.aiAgent = new AISDKAgent<never, Record<string, Tool>>({
       model: config.model,
@@ -137,9 +160,49 @@ export class Agent<
       tools: {}, // Will be overridden per-request with resolved tools
       stopWhen: stepCountIs(config.maxTurns || 10),
       temperature: config.temperature,
-      toolChoice: toolChoice as any, // Pass toolChoice as top-level param
+      toolChoice: toolChoice as any,
       ...otherModelSettings,
+      // Values validated via satisfies in buildProviderOptions()
+      ...(providerOptions
+        ? { providerOptions: providerOptions as Record<string, never> }
+        : {}),
     });
+  }
+
+  /**
+   * Maps the provider-agnostic `parallel_tool_calls` flag into
+   * the correct provider-specific `providerOptions` structure.
+   * Non-matching provider keys are silently ignored by the AI SDK.
+   */
+  private buildProviderOptions(
+    parallelToolCalls: boolean | undefined,
+    userProviderOptions?: unknown,
+  ): Record<string, Record<string, unknown>> | undefined {
+    if (parallelToolCalls === undefined && !userProviderOptions) {
+      return undefined;
+    }
+
+    const userOpts = (userProviderOptions ?? {}) as Record<
+      string,
+      Record<string, unknown>
+    >;
+    const result: Record<string, Record<string, unknown>> = { ...userOpts };
+
+    if (parallelToolCalls !== undefined) {
+      result.openai = {
+        ...userOpts.openai,
+        ...({ parallelToolCalls } satisfies OpenAILanguageModelChatOptions),
+      };
+
+      result.anthropic = {
+        ...userOpts.anthropic,
+        ...({
+          disableParallelToolUse: !parallelToolCalls,
+        } satisfies AnthropicLanguageModelOptions),
+      };
+    }
+
+    return result;
   }
 
   async generate(options: AgentGenerateOptions): Promise<AgentGenerateResult> {
@@ -303,21 +366,50 @@ export class Agent<
     // Note: Conversation history is automatically loaded via loadMessagesWithHistory()
 
     // Build additional options to pass to AI SDK
-    // Extract toolChoice as a top-level param (per AI SDK requirements)
-    const { toolChoice: configuredToolChoice, ...otherSettings } =
-      this.modelSettings || {};
+    // Extract toolChoice as a top-level param (per AI SDK requirements), parallel_tool_calls, and providerOptions from modelSettings
+    const {
+      toolChoice: configuredToolChoice,
+      parallel_tool_calls: streamParallelToolCalls,
+      providerOptions: streamUserProviderOptions,
+      ...otherSettings
+    } = this.modelSettings || {};
 
     // Allow runtime toolChoice to override configured toolChoice
     const effectiveToolChoice = toolChoice
       ? { type: "tool" as const, toolName: toolChoice }
       : configuredToolChoice;
 
+    logger.debug(`[${this.name}] stream() modelSettings`, {
+      raw: this.modelSettings,
+      streamParallelToolCalls,
+      streamUserProviderOptions,
+      otherSettings,
+    });
+
+    const streamProviderOptions = this.buildProviderOptions(
+      streamParallelToolCalls as boolean | undefined,
+      streamUserProviderOptions,
+    );
+
+    logger.debug(`[${this.name}] stream() providerOptions`, {
+      streamProviderOptions,
+    });
+
     const additionalOptions: Record<string, unknown> = {
-      instructions: systemPrompt, // Override system prompt per call
-      tools: resolvedTools, // Add resolved tools here
-      toolChoice: effectiveToolChoice, // Pass toolChoice as top-level param
-      ...otherSettings, // Include other model settings
+      instructions: systemPrompt,
+      tools: resolvedTools,
+      toolChoice: effectiveToolChoice,
+      ...otherSettings,
+      ...(streamProviderOptions
+        ? { providerOptions: streamProviderOptions }
+        : {}),
     };
+
+    logger.debug(`[${this.name}] stream() additionalOptions keys`, {
+      keys: Object.keys(additionalOptions),
+      hasProviderOptions: "providerOptions" in additionalOptions,
+      providerOptions: additionalOptions.providerOptions,
+    });
 
     if (executionContext) {
       additionalOptions.experimental_context = executionContext;
@@ -1009,7 +1101,9 @@ export class Agent<
 
                       // Store handoff context for system prompt injection
                       if (filteredData.handoffContext) {
-                        (executionContext as ExtendedExecutionContext)._handoffContext = filteredData.handoffContext;
+                        (
+                          executionContext as ExtendedExecutionContext
+                        )._handoffContext = filteredData.handoffContext;
                       }
                     } catch (error) {
                       logger.error("Error applying handoff input filter", {
@@ -1059,7 +1153,9 @@ export class Agent<
 
                     // Store handoff context for system prompt injection
                     if (filteredData.handoffContext) {
-                      (executionContext as ExtendedExecutionContext)._handoffContext = filteredData.handoffContext;
+                      (
+                        executionContext as ExtendedExecutionContext
+                      )._handoffContext = filteredData.handoffContext;
                     }
                   }
 
